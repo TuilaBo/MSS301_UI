@@ -14,10 +14,12 @@ function Footer({ onNavigate }) {
       { label: 'Giáo án', action: () => scrollToSection('features') },
       { label: 'Bài tập', action: () => scrollToSection('features') },
       { label: 'Tài liệu', action: () => scrollToSection('features') },
+      { label: 'Membership', action: () => onNavigate && onNavigate('membership-plans') },
     ],
     account: [
       { label: 'Đăng nhập', action: () => onNavigate && onNavigate('login') },
       { label: 'Đăng ký', action: () => onNavigate && onNavigate('register') },
+      { label: 'Membership của tôi', action: () => onNavigate && onNavigate('my-memberships') },
       { label: 'Quên mật khẩu', action: () => {} },
     ],
     support: [

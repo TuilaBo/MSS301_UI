@@ -15,7 +15,12 @@ function Login({ onNavigate }) {
 
     try {
       const response = await authService.login(username, password)
-      console.log('Login successful:', response)
+      
+      // Lưu userId vào localStorage (nếu backend không trả về, dùng giá trị mock)
+      if (!localStorage.getItem('userId')) {
+        // Mock userId cho testing - trong production backend phải trả về
+        localStorage.setItem('userId', '1')
+      }
       
       // Chuyển đến trang chủ sau khi đăng nhập thành công
       if (onNavigate) {
