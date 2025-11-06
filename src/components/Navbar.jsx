@@ -26,6 +26,7 @@ function Navbar({ onNavigate }) {
     { label: 'Giáo án', href: '#features', action: () => scrollToSection('features') },
     { label: 'Bài tập', href: '#features', action: () => scrollToSection('features') },
     { label: 'Tài liệu', href: '#features', action: () => scrollToSection('features') },
+    { label: 'Membership', href: '#membership-plans', action: () => onNavigate && onNavigate('membership-plans') },
   ]
 
   return (
