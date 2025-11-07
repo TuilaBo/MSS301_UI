@@ -26,28 +26,68 @@ async function apiRequest(endpoint, options = {}) {
     
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`
+      const contentType = response.headers.get('content-type') || ''
+      
       try {
-        const errorData = await response.json()
-        errorMessage = errorData.message || errorData.error || errorMessage
-        console.error('API Error Response:', errorData)
+        // Try to get response as text first
+        const responseText = await response.clone().text()
+        
+        // Try to parse as JSON
+        if (contentType.includes('application/json') || responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
+          try {
+            const errorData = JSON.parse(responseText)
+            errorMessage = errorData.message || errorData.error || errorData.detail || errorMessage
+            console.error('API Error Response:', errorData)
+          } catch (e) {
+            // Not valid JSON, use text as error message
+            errorMessage = responseText || errorMessage
+            console.error('API Error Text (not JSON):', responseText)
+          }
+        } else {
+          // Plain text response
+          errorMessage = responseText || errorMessage
+          console.error('API Error Text:', responseText)
+        }
       } catch (e) {
-        const errorText = await response.text()
-        console.error('API Error Text:', errorText)
-        errorMessage = errorText || errorMessage
+        console.error('Failed to read error response:', e)
+        errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unknown error'}`
       }
+      
       const error = new Error(errorMessage)
       error.status = response.status
       error.response = response
       throw error
     }
 
-    // Handle empty response
-    const contentType = response.headers.get('content-type')
-    if (contentType && contentType.includes('application/json')) {
-      return await response.json()
-    } else {
+    // Handle response based on content type
+    const contentType = response.headers.get('content-type') || ''
+    
+    // Check if response is JSON
+    if (contentType.includes('application/json')) {
       const text = await response.text()
-      return text ? JSON.parse(text) : {}
+      if (!text || text.trim() === '') {
+        return {}
+      }
+      try {
+        return JSON.parse(text)
+      } catch (e) {
+        console.error('Failed to parse JSON response:', text)
+        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`)
+      }
+    } else {
+      // Handle non-JSON response (text/plain, text/html, etc.)
+      const text = await response.text()
+      if (!text || text.trim() === '') {
+        return {}
+      }
+      
+      // Try to parse as JSON first (in case content-type is wrong)
+      try {
+        return JSON.parse(text)
+      } catch (e) {
+        // If not JSON, return as text message
+        return { message: text }
+      }
     }
   } catch (error) {
     console.error('API Request Error:', {

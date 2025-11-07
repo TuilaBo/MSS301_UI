@@ -1,9 +1,25 @@
+import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import LiteraryHero from '../components/LiteraryHero'
 
 function HomePage({ onNavigate }) {
+  useEffect(() => {
+    // Kiểm tra xem có section nào cần scroll đến không
+    const scrollToSectionId = sessionStorage.getItem('scrollToSection')
+    if (scrollToSectionId) {
+      // Đợi một chút để đảm bảo DOM đã render
+      setTimeout(() => {
+        const element = document.getElementById(scrollToSectionId)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' })
+          sessionStorage.removeItem('scrollToSection')
+        }
+      }, 300)
+    }
+  }, [])
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 via-amber-50 to-orange-50">
       <Navbar onNavigate={onNavigate} />
