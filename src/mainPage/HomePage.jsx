@@ -1,14 +1,18 @@
 import { motion } from 'framer-motion'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import LiteraryHero from '../components/LiteraryHero'
 
 function HomePage({ onNavigate }) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 via-amber-50 to-orange-50">
       <Navbar onNavigate={onNavigate} />
 
+      {/* Literary Hero Slider */}
+      <LiteraryHero />
+
       {/* Hero Section */}
-      <section id="home" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-20 md:pt-40 md:pb-32">
+      <section id="home" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-20 md:pt-32 md:pb-32">
         <div className="text-center">
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
