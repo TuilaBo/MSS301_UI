@@ -62,6 +62,24 @@ export default defineConfig({
           })
         },
       },
+      // OAuth2 endpoints
+      '/oauth2': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, res) => {
+            console.log('proxy error (oauth2)', err)
+          })
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Sending Request to OAuth2:', req.method, req.url)
+          })
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Received Response from OAuth2:', proxyRes.statusCode, req.url)
+          })
+        },
+      },
     },
   },
 })

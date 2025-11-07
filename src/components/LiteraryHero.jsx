@@ -82,7 +82,7 @@ const LiteraryHero = () => {
         ))}
       </Slider>
       {/* Custom CSS for dots */}
-      <style jsx>{`
+      <style>{`
         .custom-dots {
           list-style: none !important;
           padding: 0 !important;

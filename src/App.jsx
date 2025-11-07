@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import HomePage from './mainPage/HomePage'
 import Login from './mainPage/authen/Login'
 import Register from './mainPage/authen/Register'
+import OAuthCallback from './mainPage/authen/OAuthCallback'
+import Profile from './mainPage/Profile'
 import MembershipPlans from './mainPage/MembershipPlans'
 import MyMemberships from './mainPage/MyMemberships'
 import PaymentResult from './mainPage/PaymentResult'
@@ -41,6 +43,14 @@ function App() {
 
   if (currentPage === 'register') {
     return <Register onNavigate={handleNavigate} />
+  }
+
+  if (currentPage === 'oauth-callback') {
+    return <OAuthCallback onNavigate={handleNavigate} />
+  }
+
+  if (currentPage === 'profile') {
+    return <Profile onNavigate={handleNavigate} />
   }
 
   if (currentPage === 'membership-plans') {
