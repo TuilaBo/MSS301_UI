@@ -1,12 +1,62 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { paymentService } from '../service/paymentService'
+import { testApiConnections, displayApiStatus } from '../utils/apiTest'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 
-function MembershipPlans({ onNavigate }) {
+function MembershipPlans() {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [memberships, setMemberships] = useState([])
+  const [fetchingMemberships, setFetchingMemberships] = useState(true)
+  const [apiTestResults, setApiTestResults] = useState(null)
+
+  // Test API connections
+  const handleTestApi = async () => {
+    console.log('🧪 Manual API test triggered')
+    const results = await testApiConnections()
+    setApiTestResults(results)
+    displayApiStatus(results)
+  }
+
+  // Fetch memberships from API
+  useEffect(() => {
+    const fetchMemberships = async () => {
+      try {
+        setFetchingMemberships(true)
+        console.log('🚀 Fetching memberships from API...')
+        
+        const response = await paymentService.getAllMemberships()
+        console.log('📦 Memberships API Response:', response)
+        
+        // Handle different response structures
+        let membershipData = []
+        if (response && response.data && Array.isArray(response.data)) {
+          membershipData = response.data
+        } else if (response && Array.isArray(response)) {
+          membershipData = response
+        } else {
+          console.warn('⚠️ Unexpected membership API response:', response)
+          membershipData = []
+        }
+        
+        setMemberships(membershipData)
+        console.log('✅ Memberships loaded:', membershipData)
+      } catch (err) {
+        console.error('❌ Error fetching memberships:', err)
+        setError('Không thể tải danh sách gói membership từ server. Hiển thị dữ liệu mẫu.')
+        // Fallback to default tiers if API fails
+        setMemberships([])
+      } finally {
+        setFetchingMemberships(false)
+      }
+    }
+
+    fetchMemberships()
+  }, [])
 
   const tiers = ['BASIC', 'SILVER', 'GOLD', 'PLATINUM']
 
@@ -23,11 +73,7 @@ function MembershipPlans({ onNavigate }) {
         setLoading(false)
         setError('Vui lòng đăng nhập để mua gói membership')
         setTimeout(() => {
-          if (onNavigate) {
-            onNavigate('login')
-          } else {
-            window.location.hash = 'login'
-          }
+          navigate('/login')
         }, 2000)
         return
       }
@@ -53,7 +99,7 @@ function MembershipPlans({ onNavigate }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 via-purple-50 to-pink-50">
-      <Navbar onNavigate={onNavigate} />
+      <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-20">
         {/* Header */}
@@ -69,6 +115,37 @@ function MembershipPlans({ onNavigate }) {
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Nâng cấp tài khoản của bạn để truy cập đầy đủ tính năng và tài liệu học tập
           </p>
+          
+          {/* API Test Button - Development only */}
+          {import.meta.env.DEV && (
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={handleTestApi}
+                className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
+              >
+                🧪 Test API Connections
+              </button>
+            </div>
+          )}
+          
+          {/* API Test Results */}
+          {apiTestResults && (
+            <div className="mt-4 max-w-md mx-auto bg-gray-50 p-4 rounded-lg text-sm">
+              <div className="font-semibold mb-2">API Status:</div>
+              <div className="flex justify-between items-center">
+                <span>Payment Service:</span>
+                <span className={`font-mono ${apiTestResults.payment.status === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                  {apiTestResults.payment.status === 'success' ? '✅ Connected' : '❌ Failed'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Document Service:</span>
+                <span className={`font-mono ${apiTestResults.document.status === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                  {apiTestResults.document.status === 'success' ? '✅ Connected' : '❌ Failed'}
+                </span>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Error Message */}
@@ -76,19 +153,53 @@ function MembershipPlans({ onNavigate }) {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-2xl mx-auto mb-6 bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-lg"
+            className="max-w-2xl mx-auto mb-6 bg-yellow-50 border-2 border-yellow-200 text-yellow-700 px-6 py-4 rounded-lg"
           >
-            {error}
+            <div className="flex items-center space-x-2">
+              <span>⚠️</span>
+              <span>{error}</span>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Loading state */}
+        {fetchingMemberships && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center mb-8"
+          >
+            <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full mr-2"
+              />
+              Đang tải dữ liệu gói membership...
+            </div>
           </motion.div>
         )}
 
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {tiers.map((tier, index) => {
-            const info = paymentService.getMembershipTierInfo(tier)
+            // Try to find API data first, fallback to static data
+            const apiMembership = memberships.find(m => m.tier === tier)
+            const staticInfo = paymentService.getMembershipTierInfo(tier)
+            
+            // Use API data if available, otherwise use static data
+            const info = apiMembership ? {
+              name: staticInfo.name,
+              price: apiMembership.price || staticInfo.price,
+              duration: apiMembership.duration || staticInfo.duration,
+              features: apiMembership.features || staticInfo.features,
+              color: staticInfo.color,
+              icon: staticInfo.icon
+            } : staticInfo
+
             const colorClasses = {
               blue: 'from-blue-500 to-blue-600',
-              gray: 'from-gray-400 to-gray-600',
+              gray: 'from-gray-400 to-gray-600', 
               yellow: 'from-yellow-500 to-orange-500',
               purple: 'from-purple-600 to-pink-600'
             }
@@ -114,6 +225,12 @@ function MembershipPlans({ onNavigate }) {
                   <div className="text-center mb-6">
                     <div className="text-5xl mb-3">{info.icon}</div>
                     <h3 className="text-2xl font-bold text-gray-800">{info.name}</h3>
+                    {apiMembership && (
+                      <div className="text-xs text-green-600 mt-1">✓ API Data</div>
+                    )}
+                    {!apiMembership && memberships.length === 0 && !fetchingMemberships && (
+                      <div className="text-xs text-yellow-600 mt-1">⚠️ Static Data</div>
+                    )}
                   </div>
 
                   {/* Price */}
@@ -190,7 +307,7 @@ function MembershipPlans({ onNavigate }) {
         </motion.div>
       </div>
 
-      <Footer onNavigate={onNavigate} />
+      <Footer />
     </div>
   )
 }

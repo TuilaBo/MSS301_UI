@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { authService } from '../service/authService'
+import { useNavigate } from 'react-router-dom'
+import AuthStatus, { isAuthenticated } from './AuthStatus'
 
-function Navbar({ onNavigate }) {
+function Navbar() {
+  const navigate = useNavigate()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -15,82 +16,20 @@ function Navbar({ onNavigate }) {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  useEffect(() => {
-    // Check authentication status
-    setIsAuthenticated(authService.isAuthenticated())
-    
-    // Listen for storage changes (when user logs in/out in another tab)
-    const handleStorageChange = () => {
-      setIsAuthenticated(authService.isAuthenticated())
-    }
-    
-    window.addEventListener('storage', handleStorageChange)
-    
-    // Also check on focus (when user comes back to tab)
-    const handleFocus = () => {
-      setIsAuthenticated(authService.isAuthenticated())
-    }
-    
-    window.addEventListener('focus', handleFocus)
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange)
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [])
-
   const scrollToSection = (id) => {
-    // Kiểm tra xem có đang ở HomePage không (check hash hoặc current page)
-    const currentHash = window.location.hash.slice(1) || 'home'
-    
-    // Nếu không ở home page, navigate về home và lưu section id để scroll sau
-    if (currentHash !== 'home') {
-      // Lưu section id vào sessionStorage để HomePage có thể scroll sau khi load
-      sessionStorage.setItem('scrollToSection', id)
-      
-      if (onNavigate) {
-        onNavigate('home')
-      } else {
-        window.location.hash = 'home'
-      }
-      
-      // Đợi để page render xong rồi scroll
-      setTimeout(() => {
-        const element = document.getElementById(id)
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth' })
-          sessionStorage.removeItem('scrollToSection')
-        }
-      }, 500)
-    } else {
-      // Nếu đã ở home page, scroll ngay
-      setTimeout(() => {
-        const element = document.getElementById(id)
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth' })
-        }
-      }, 100)
+    const element = document.getElementById(id)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' })
     }
     setIsMobileMenuOpen(false)
-  }
-
-  const handleLogout = () => {
-    authService.logout()
-    setIsAuthenticated(false)
-    setIsMobileMenuOpen(false)
-    if (onNavigate) {
-      onNavigate('home')
-    } else {
-      window.location.hash = 'home'
-    }
   }
 
   const navItems = [
-    { label: 'Trang chủ', href: '#home', action: () => scrollToSection('home') },
-    { label: 'Giáo án', href: '#features', action: () => scrollToSection('features') },
+    { label: 'Trang chủ', href: '/', action: () => navigate('/') },
+    { label: 'Giáo án', href: '/lessons', action: () => navigate('/lessons') },
+    { label: 'Tài liệu', href: '/documents', action: () => navigate('/documents') },
     { label: 'Bài tập', href: '#features', action: () => scrollToSection('features') },
-    { label: 'Tài liệu', href: '#features', action: () => scrollToSection('features') },
-    { label: 'Membership', href: '#membership-plans', action: () => onNavigate && onNavigate('membership-plans') },
+    { label: 'Membership', href: '/membership', action: () => navigate('/membership') },
   ]
 
   return (
@@ -109,13 +48,7 @@ function Navbar({ onNavigate }) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
             className="flex items-center space-x-3 cursor-pointer"
-            onClick={() => {
-              if (onNavigate) {
-                onNavigate('home')
-              } else {
-                window.location.hash = 'home'
-              }
-            }}
+            onClick={() => navigate('/')}
           >
             <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-2 rounded-lg shadow-md">
               <span className="text-2xl">📚</span>
@@ -148,42 +81,8 @@ function Navbar({ onNavigate }) {
           </div>
 
           {/* Action Buttons */}
-          <div className="hidden lg:flex items-center space-x-3">
-            {isAuthenticated ? (
-              <>
-                <button
-                  onClick={() => onNavigate && onNavigate('profile')}
-                  className="px-5 py-2.5 text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
-                >
-                  Profile
-                </button>
-                <motion.button
-                  onClick={handleLogout}
-                  className="px-6 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-medium text-sm shadow-md hover:shadow-lg transition-all"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Đăng xuất
-                </motion.button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => onNavigate && onNavigate('login')}
-                  className="px-5 py-2.5 text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
-                >
-                  Đăng nhập
-                </button>
-                <motion.button
-                  onClick={() => onNavigate && onNavigate('register')}
-                  className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium text-sm shadow-md hover:shadow-lg transition-all"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Đăng ký
-                </motion.button>
-              </>
-            )}
+          <div className="hidden lg:flex">
+            <AuthStatus />
           </div>
 
           {/* Mobile Menu Button */}
@@ -240,48 +139,9 @@ function Navbar({ onNavigate }) {
                 </a>
               ))}
               <div className="flex flex-col space-y-2 pt-2 border-t border-blue-100">
-                {isAuthenticated ? (
-                  <>
-                    <button
-                      onClick={() => {
-                        onNavigate && onNavigate('profile')
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="px-4 py-2 text-blue-600 font-medium text-left"
-                    >
-                      Profile
-                    </button>
-                    <button
-                      onClick={() => {
-                        handleLogout()
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-medium"
-                    >
-                      Đăng xuất
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={() => {
-                        onNavigate && onNavigate('login')
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="px-4 py-2 text-blue-600 font-medium text-left"
-                    >
-                      Đăng nhập
-                    </button>
-                    <button
-                      onClick={() => {
-                        onNavigate && onNavigate('register')
-                        setIsMobileMenuOpen(false)
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium"
-                    >
-                      Đăng ký
-                    </button>
-                  </>
-                )}
+                <AuthStatus 
+                  variant="mobile" 
+                />
               </div>
             </div>
           </motion.div>
