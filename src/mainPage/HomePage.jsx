@@ -1,34 +1,16 @@
-import { useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
-import LiteraryHero from '../components/LiteraryHero'
 
-function HomePage({ onNavigate }) {
-  useEffect(() => {
-    // Kiểm tra xem có section nào cần scroll đến không
-    const scrollToSectionId = sessionStorage.getItem('scrollToSection')
-    if (scrollToSectionId) {
-      // Đợi một chút để đảm bảo DOM đã render
-      setTimeout(() => {
-        const element = document.getElementById(scrollToSectionId)
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth' })
-          sessionStorage.removeItem('scrollToSection')
-        }
-      }, 300)
-    }
-  }, [])
-
+function HomePage() {
+  const navigate = useNavigate();
+  
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 via-amber-50 to-orange-50">
-      <Navbar onNavigate={onNavigate} />
-
-      {/* Literary Hero Slider */}
-      <LiteraryHero />
-
+      <Navbar />
       {/* Hero Section */}
-      <section id="home" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-20 md:pt-32 md:pb-32">
+      <section id="home" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-20 md:pt-40 md:pb-32">
         <div className="text-center">
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
@@ -57,7 +39,7 @@ function HomePage({ onNavigate }) {
             transition={{ duration: 0.6, delay: 0.4 }}
           >
             <button
-              onClick={() => onNavigate && onNavigate('login')}
+              onClick={() => navigate('/login')}
               className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-8 py-4 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
             >
               Bắt Đầu Ngay
@@ -90,7 +72,8 @@ function HomePage({ onNavigate }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-blue-100 hover:border-blue-200"
+            className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-blue-100 hover:border-blue-200 cursor-pointer"
+            onClick={() => navigate('/lessons')}
           >
             <div className="text-5xl mb-4">📖</div>
             <h3 className="text-2xl font-bold text-gray-800 mb-3">
@@ -126,7 +109,8 @@ function HomePage({ onNavigate }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-blue-100 hover:border-blue-200"
+            className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-blue-100 hover:border-blue-200 cursor-pointer"
+            onClick={() => navigate('/documents')}
           >
             <div className="text-5xl mb-4">📚</div>
             <h3 className="text-2xl font-bold text-gray-800 mb-3">
@@ -160,10 +144,10 @@ function HomePage({ onNavigate }) {
         </motion.div>
       </section>
 
-      <Footer onNavigate={onNavigate} />
+      <Footer />
     </div>
-  )
+  );
 }
 
-export default HomePage
+export default HomePage;
 
