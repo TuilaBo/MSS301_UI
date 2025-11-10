@@ -15,78 +15,74 @@ async function apiRequest(endpoint, options = {}) {
     ...options,
   }
 
-  // Thêm token nếu có trong localStorage
-  const token = localStorage.getItem('accessToken')
+  // Thêm token nếu có trong localStorage - hỗ trợ nhiều tên khóa token khác nhau
+  const tokenKeys = ['accessToken', 'access_token', 'token', 'jwt', 'idToken']
+  let token = null
+  let tokenKey = null
+  for (const k of tokenKeys) {
+    const v = localStorage.getItem(k)
+    if (v) {
+      token = v
+      tokenKey = k
+      break
+    }
+  }
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`
   }
+
+  // Debug: which key provided the token
+  try {
+    /* eslint-disable no-console */
+    console.log('🔐 apiRequest - token present:', !!token, 'keyUsed:', tokenKey)
+    console.log('🔐 apiRequest - outgoing Authorization header:', config.headers['Authorization'])
+    /* eslint-enable no-console */
+  } catch (e) {}
 
   try {
     const response = await fetch(url, config)
     
     if (!response.ok) {
       let errorMessage = `HTTP error! status: ${response.status}`
-      const contentType = response.headers.get('content-type') || ''
-      
       try {
-        // Try to get response as text first
-        const responseText = await response.clone().text()
-        
-        // Try to parse as JSON
-        if (contentType.includes('application/json') || responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
-          try {
-            const errorData = JSON.parse(responseText)
-            errorMessage = errorData.message || errorData.error || errorData.detail || errorMessage
-            console.error('API Error Response:', errorData)
-          } catch (e) {
-            // Not valid JSON, use text as error message
-            errorMessage = responseText || errorMessage
-            console.error('API Error Text (not JSON):', responseText)
-          }
-        } else {
-          // Plain text response
-          errorMessage = responseText || errorMessage
-          console.error('API Error Text:', responseText)
-        }
+        // Clone response để tránh lỗi "body stream already read"
+        const responseClone = response.clone()
+        const errorData = await responseClone.json()
+        errorMessage = errorData.message || errorData.error || errorMessage
+        console.error('API Error Response:', errorData)
       } catch (e) {
-        console.error('Failed to read error response:', e)
-        errorMessage = `HTTP ${response.status}: ${response.statusText || 'Unknown error'}`
+        try {
+          const errorText = await response.text()
+          console.error('API Error Text:', errorText)
+          errorMessage = errorText || errorMessage
+        } catch (textError) {
+          console.error('Could not read error response:', textError)
+        }
       }
-      
       const error = new Error(errorMessage)
       error.status = response.status
       error.response = response
       throw error
     }
 
-    // Handle response based on content type
-    const contentType = response.headers.get('content-type') || ''
-    
-    // Check if response is JSON
-    if (contentType.includes('application/json')) {
-      const text = await response.text()
-      if (!text || text.trim() === '') {
-        return {}
+    // Handle successful response
+    const contentType = response.headers.get('content-type')
+    try {
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json()
+      } else {
+        const text = await response.text()
+        return text ? JSON.parse(text) : {}
       }
+    } catch (parseError) {
+      console.error('Error parsing response:', parseError)
+      // Nếu không parse được JSON, trả về response text
       try {
-        return JSON.parse(text)
-      } catch (e) {
-        console.error('Failed to parse JSON response:', text)
-        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`)
-      }
-    } else {
-      // Handle non-JSON response (text/plain, text/html, etc.)
-      const text = await response.text()
-      if (!text || text.trim() === '') {
+        const text = await response.text()
+        return text || {}
+      } catch (textError) {
+        console.error('Could not read response text:', textError)
         return {}
-      }
-      
-      // Try to parse as JSON first (in case content-type is wrong)
-      try {
-        return JSON.parse(text)
-      } catch (e) {
-        // If not JSON, return as text message
-        return { message: text }
       }
     }
   } catch (error) {

@@ -8,8 +8,17 @@ export const authService = {
     })
     
     // Lưu token và userId vào localStorage
-    if (response.accessToken) {
-      localStorage.setItem('accessToken', response.accessToken)
+    // Hỗ trợ nhiều tên field token trả về từ backend: accessToken, access_token, token, jwt
+    const tokenCandidateKeys = ['accessToken', 'access_token', 'token', 'jwt', 'idToken']
+    let tokenValue = null
+    for (const k of tokenCandidateKeys) {
+      if (response[k]) {
+        tokenValue = response[k]
+        break
+      }
+    }
+    if (tokenValue) {
+      localStorage.setItem('accessToken', tokenValue)
       localStorage.setItem('tokenType', response.tokenType || 'Bearer')
     }
     
@@ -42,48 +51,17 @@ export const authService = {
     return response
   },
 
-  registerTeacher: async (userData) => {
-    const response = await api.post('/auth/register-teacher', {
-      username: userData.username,
-      fullName: userData.fullName,
-      password: userData.password,
-      email: userData.email,
-      gender: userData.gender,
-      birthday: userData.birthday,
-    })
-    
-    return response
-  },
-
-  verifyEmail: async (email, code) => {
-    const response = await api.post('/auth/verify', {
-      email,
-      code,
-    })
-    
-    return response
-  },
-
-  resendVerificationCode: async (email) => {
-    const response = await api.post('/auth/resend-verification', {
-      email,
-    })
-    
-    return response
-  },
-
   logout: () => {
-    // Xóa tất cả thông tin trong localStorage
+    // Remove common token keys as well
     localStorage.removeItem('accessToken')
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('token')
+    localStorage.removeItem('jwt')
+    localStorage.removeItem('idToken')
     localStorage.removeItem('tokenType')
     localStorage.removeItem('userId')
     localStorage.removeItem('userName')
     localStorage.removeItem('fullName')
-    localStorage.removeItem('email')
-    localStorage.removeItem('role')
-    
-    // Trigger storage event để các tab khác cũng cập nhật
-    window.dispatchEvent(new Event('storage'))
   },
 
   getToken: () => {
@@ -92,35 +70,6 @@ export const authService = {
 
   isAuthenticated: () => {
     return !!localStorage.getItem('accessToken')
-  },
-
-  getCurrentUser: async () => {
-    const response = await api.get('/auth/me')
-    return response
-  },
-
-  loginWithGoogle: () => {
-    // Redirect đến Google OAuth endpoint
-    window.location.href = '/oauth2/authorization/google'
-  },
-
-  handleOAuthCallback: async (response) => {
-    // Xử lý response từ /api/auth/success
-    if (response.authenticated && response.token) {
-      localStorage.setItem('accessToken', response.token)
-      localStorage.setItem('tokenType', 'Bearer')
-      
-      if (response.user) {
-        localStorage.setItem('userId', response.user.userId)
-        localStorage.setItem('userName', response.user.username)
-        localStorage.setItem('fullName', response.user.fullName)
-        localStorage.setItem('email', response.user.email)
-        localStorage.setItem('role', response.user.role)
-      }
-      
-      return response
-    }
-    throw new Error('OAuth authentication failed')
   },
 }
 
