@@ -8,6 +8,13 @@ import MembershipPlans from './mainPage/MembershipPlans'
 import MyMemberships from './mainPage/MyMemberships'
 import PaymentResult from './mainPage/PaymentResult'
 import PaymentRedirect from './mainPage/PaymentRedirect'
+import TakeTest from './mainPage/test/TakeTest'
+import TestDetail from './mainPage/test/TestDetail'
+import AttemptResult from './mainPage/test/AttemptResult'
+import LessonTestList from './mainPage/test/LessonTestList'
+import TeacherDashboard from './mainPage/teacher/TeacherDashboard'
+import TeacherTestForm from './mainPage/teacher/TeacherTestForm'
+import TeacherTestUpdate from './mainPage/teacher/TeacherTestUpdate'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
@@ -67,6 +74,34 @@ function App() {
 
   if (currentPage === 'payment-redirect') {
     return <PaymentRedirect />
+  }
+
+  if (currentPage === 'take-test') {
+    return <TakeTest onNavigate={handleNavigate} />
+  }
+
+  if (currentPage === 'test-detail') {
+    return <TestDetail onNavigate={handleNavigate} />
+  }
+
+  if (currentPage === 'test-result') {
+    return <AttemptResult onNavigate={handleNavigate} />
+  }
+
+  if (currentPage === 'lesson-tests') {
+    return <LessonTestList onNavigate={handleNavigate} />
+  }
+
+  if (currentPage === 'teacher-dashboard') {
+    return <TeacherDashboard onNavigate={handleNavigate} />
+  }
+
+  if (currentPage === 'teacher-test-form') {
+    return <TeacherTestForm onNavigate={handleNavigate} />
+  }
+
+  if (currentPage === 'teacher-test-update') {
+    return <TeacherTestUpdate onNavigate={handleNavigate} />
   }
 
   return <HomePage onNavigate={handleNavigate} />

@@ -62,6 +62,61 @@ export default defineConfig({
           })
         },
       },
+      // Question Service (mock tests, questions, attempts) - port 8084
+      '/api/mock-tests': {
+        target: 'http://localhost:8084',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, res) => {
+            console.log('proxy error (mock-tests)', err)
+          })
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Sending Request to Question Service:', req.method, req.url)
+            proxyReq.setHeader('Origin', 'http://localhost:8084')
+          })
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Received Response from Question Service:', proxyRes.statusCode, req.url)
+          })
+        },
+      },
+      '/api/mock-questions': {
+        target: 'http://localhost:8084',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, res) => {
+            console.log('proxy error (mock-questions)', err)
+          })
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Sending Request to Question Service:', req.method, req.url)
+            proxyReq.setHeader('Origin', 'http://localhost:8084')
+          })
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Received Response from Question Service:', proxyRes.statusCode, req.url)
+          })
+        },
+      },
+      '/api/mock-attempts': {
+        target: 'http://localhost:8084',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, res) => {
+            console.log('proxy error (mock-attempts)', err)
+          })
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Sending Request to Question Service:', req.method, req.url)
+            proxyReq.setHeader('Origin', 'http://localhost:8084')
+          })
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Received Response from Question Service:', proxyRes.statusCode, req.url)
+          })
+        },
+      },
       // OAuth2 endpoints
       '/oauth2': {
         target: 'http://localhost:8081',
