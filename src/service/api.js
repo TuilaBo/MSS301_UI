@@ -63,24 +63,22 @@ async function apiRequest(endpoint, options = {}) {
     }
 
     // Handle successful response
-    const contentType = response.headers.get('content-type')
+    const contentType = response.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      return await response.json()
+    }
+
+    const text = await response.text()
+    if (!text) {
+      return {}
+    }
+
+    // Try parse JSON even when content-type is wrong, fallback to plain text message
     try {
-      if (contentType && contentType.includes('application/json')) {
-        return await response.json()
-      } else {
-        const text = await response.text()
-        return text ? JSON.parse(text) : {}
-      }
+      return JSON.parse(text)
     } catch (parseError) {
-      console.error('Error parsing response:', parseError)
-      // Nếu không parse được JSON, trả về response text
-      try {
-        const text = await response.text()
-        return text || {}
-      } catch (textError) {
-        console.error('Could not read response text:', textError)
-        return {}
-      }
+      console.warn('Response is not valid JSON, returning as message:', text)
+      return { message: text }
     }
   } catch (error) {
     console.error('API Request Error:', {

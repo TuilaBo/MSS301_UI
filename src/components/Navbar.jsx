@@ -1,12 +1,15 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import AuthStatus, { isAuthenticated } from './AuthStatus'
+import { authService } from '../service/authService'
 import AuthStatus, { getUserInfo } from './AuthStatus'
 
 function Navbar() {
   const navigate = useNavigate()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isAuth, setIsAuth] = useState(false)
   const userInfo = getUserInfo()
   const storedRole = typeof window !== 'undefined' ? localStorage.getItem('role') : null
 
@@ -48,6 +51,58 @@ function Navbar() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  // Fetch user info when authenticated
+  useEffect(() => {
+    const checkAuthAndFetchUser = async () => {
+      const authenticated = authService.isAuthenticated()
+      setIsAuth(authenticated)
+      
+      if (authenticated) {
+        try {
+          const user = await authService.getCurrentUser()
+          setUserInfo(user)
+        } catch (err) {
+          console.error('Failed to fetch user info:', err)
+          // If token is invalid, clear auth state
+          if (err.status === 401) {
+            authService.logout()
+            setIsAuth(false)
+            setUserInfo(null)
+          }
+        }
+      } else {
+        setUserInfo(null)
+      }
+    }
+
+    checkAuthAndFetchUser()
+
+    // Listen for storage changes (login/logout in other tabs)
+    const handleStorageChange = () => {
+      checkAuthAndFetchUser()
+    }
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Also check on focus
+    const handleFocus = () => {
+      checkAuthAndFetchUser()
+    }
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [])
+
+  const handleLogout = () => {
+    authService.logout()
+    setIsAuth(false)
+    setUserInfo(null)
+    setIsMobileMenuOpen(false)
+    navigate('/')
+  }
 
   const executeNavAction = (action) => {
     if (typeof action === 'function') {
@@ -112,8 +167,42 @@ function Navbar() {
           </div>
 
           {/* Action Buttons */}
-          <div className="hidden lg:flex">
-            <AuthStatus />
+          <div className="hidden lg:flex items-center space-x-3">
+            {isAuth && userInfo ? (
+              <>
+                {/* Avatar */}
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate('/profile')}
+                  className="cursor-pointer relative"
+                >
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-800 rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition-all">
+                    <span className="text-xl text-white">
+                      {userInfo.role?.roleName === 'TEACHER' ? '👩‍🏫' : '👨‍🎓'}
+                    </span>
+                  </div>
+                  {/* Online indicator */}
+                  {userInfo.active && (
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                  )}
+                </motion.div>
+                {/* User name (optional, can be hidden on smaller screens) */}
+                <span className="text-sm text-gray-700 hidden xl:block">
+                  {userInfo.fullName || userInfo.username}
+                </span>
+                <motion.button
+                  onClick={handleLogout}
+                  className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-all"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Đăng xuất
+                </motion.button>
+              </>
+            ) : (
+              <AuthStatus />
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -170,9 +259,38 @@ function Navbar() {
                 </a>
               ))}
               <div className="flex flex-col space-y-2 pt-2 border-t border-blue-100">
-                <AuthStatus 
-                  variant="mobile" 
-                />
+                {isAuth && userInfo ? (
+                  <>
+                    {/* Mobile Avatar */}
+                    <div
+                      onClick={() => {
+                        navigate('/profile')
+                        setIsMobileMenuOpen(false)
+                      }}
+                      className="flex items-center space-x-3 px-4 py-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors"
+                    >
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-800 rounded-full flex items-center justify-center shadow-md">
+                        <span className="text-2xl text-white">
+                          {userInfo.role?.roleName === 'TEACHER' ? '👩‍🏫' : '👨‍🎓'}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">{userInfo.fullName || userInfo.username}</p>
+                        <p className="text-xs text-gray-600">
+                          {userInfo.role?.roleName === 'TEACHER' ? 'Giảng Viên' : 'Học Sinh'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium text-sm"
+                    >
+                      Đăng xuất
+                    </button>
+                  </>
+                ) : (
+                  <AuthStatus variant="mobile" />
+                )}
               </div>
             </div>
           </motion.div>
