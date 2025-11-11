@@ -1,7 +1,4 @@
-// Sử dụng proxy trong development, absolute URL trong production
-// Port 8081: Account Service (auth)
-// Port 8082: Payment Service (memberships, payments)
-const API_BASE_URL = import.meta.env.DEV ? '/api' : 'http://localhost:8081/api'
+import { API_BASE_URL } from '../config/apiConfig'
 
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`

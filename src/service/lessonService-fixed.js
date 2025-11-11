@@ -1,5 +1,7 @@
-// Lesson Service API - port 8083
-const LESSON_API_BASE_URL = import.meta.env.DEV ? '/api' : 'http://localhost:8083/api'
+import { API_BASE_URL } from '../config/apiConfig'
+
+// Lesson Service API
+const LESSON_API_BASE_URL = "http://localhost:8083"
 
 // Helper function for authenticated API requests
 async function lessonApiRequest(endpoint, options = {}) {

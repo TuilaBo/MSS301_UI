@@ -1,6 +1,6 @@
-const QUESTION_SERVICE_BASE_URL = import.meta.env.DEV
-  ? '/api'
-  : import.meta.env.VITE_QUESTION_SERVICE_URL || 'http://localhost:8084/api'
+import { API_BASE_URL } from '../../config/apiConfig'
+
+const QUESTION_SERVICE_BASE_URL = API_BASE_URL
 
 async function questionServiceRequest(endpoint, options = {}) {
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
