@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import QuestionListPanel from '../../components/takeTest/QuestionListPanel'
 import QuestionViewer from '../../components/takeTest/QuestionViewer'
 import AttemptControlPanel from '../../components/takeTest/AttemptControlPanel'
-import { useHashParams } from '../../hooks/useHashParams'
 import { useMockTestDetail } from '../../hooks/useMockTestDetail'
 import { useMockAttemptFlow } from '../../hooks/useMockAttemptFlow'
 
 const readToken = () => (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null)
 
 function TakeTest({ onNavigate }) {
-  const params = useHashParams()
-  const testId = params.get('testId')
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const testId = searchParams.get('testId')
 
   const [token, setToken] = useState(() => readToken())
   useEffect(() => {
@@ -90,7 +91,7 @@ function TakeTest({ onNavigate }) {
         .then((result) => {
           const attemptId = result?.id || attempt?.id
           if (attemptId) {
-            window.location.hash = `test-result?attemptId=${attemptId}`
+            navigate(`/test-result?attemptId=${attemptId}`)
           }
         })
         .catch((err) => {
@@ -184,7 +185,7 @@ function TakeTest({ onNavigate }) {
       const result = await finalizeAttempt()
       const attemptId = result?.id || attempt?.id
       if (attemptId) {
-        window.location.hash = `test-result?attemptId=${attemptId}`
+        navigate(`/test-result?attemptId=${attemptId}`)
       } else {
         setUiMessage('Đã nộp bài nhưng không tìm thấy mã attempt.')
       }

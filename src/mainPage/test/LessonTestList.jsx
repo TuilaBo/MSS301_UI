@@ -1,16 +1,25 @@
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
-import { useHashParams } from '../../hooks/useHashParams'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useLessonTests } from '../../hooks/useLessonTests'
 
 function LessonTestList({ onNavigate }) {
-  const params = useHashParams()
-  const lessonId = params.get('lessonId')
+  const [searchParams] = useSearchParams()
+  const lessonId = searchParams.get('lessonId')
+  const navigate = useNavigate()
   const { tests, loading, error } = useLessonTests(lessonId, { skip: !lessonId })
 
   const handleSelectTest = (testId) => {
     if (!testId) return
-    window.location.hash = `test-detail?testId=${testId}`
+    navigate(`/test-detail?testId=${testId}`)
+  }
+
+  const handleGoHome = () => {
+    if (onNavigate) {
+      onNavigate('home')
+    } else {
+      navigate('/')
+    }
   }
 
   return (
@@ -59,7 +68,7 @@ function LessonTestList({ onNavigate }) {
                   <button
                     type="button"
                     className="px-6 py-3 bg-white border border-gray-200 rounded-2xl text-gray-700 font-semibold hover:border-blue-300 hover:text-blue-600 transition"
-                    onClick={() => onNavigate && onNavigate('home')}
+                    onClick={handleGoHome}
                   >
                     Quay về trang chủ
                   </button>
