@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { paymentService } from '../service/paymentService'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 
 function MyMemberships({ onNavigate }) {
+  const navigate = useNavigate()
   const [memberships, setMemberships] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -153,7 +155,7 @@ function MyMemberships({ onNavigate }) {
                         if (onNavigate) {
                           onNavigate('membership-plans')
                         } else {
-                          window.location.hash = 'membership-plans'
+                          navigate('/membership-plans')
                         }
                       }}
                       className="bg-white text-purple-600 hover:bg-purple-50 font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
@@ -165,7 +167,7 @@ function MyMemberships({ onNavigate }) {
                         if (onNavigate) {
                           onNavigate('membership-plans')
                         } else {
-                          window.location.hash = 'membership-plans'
+                          navigate('/membership-plans')
                         }
                       }}
                       className="bg-purple-700 hover:bg-purple-800 font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
@@ -193,7 +195,7 @@ function MyMemberships({ onNavigate }) {
                     if (onNavigate) {
                       onNavigate('membership-plans')
                     } else {
-                      window.location.hash = 'membership-plans'
+                      navigate('/membership-plans')
                     }
                   }}
                   className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"

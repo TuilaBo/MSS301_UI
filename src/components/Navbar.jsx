@@ -1,16 +1,15 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import AuthStatus, { isAuthenticated } from './AuthStatus'
+import AuthStatus, { isAuthenticated, getUserInfo } from './AuthStatus'
 import { authService } from '../service/authService'
-import AuthStatus, { getUserInfo } from './AuthStatus'
 
 function Navbar() {
   const navigate = useNavigate()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isAuth, setIsAuth] = useState(false)
-  const userInfo = getUserInfo()
+  const [userInfo, setUserInfo] = useState(null)
   const storedRole = typeof window !== 'undefined' ? localStorage.getItem('role') : null
 
   const normalizedRoles = useMemo(() => {
@@ -111,11 +110,29 @@ function Navbar() {
     setIsMobileMenuOpen(false)
   }
 
+  // Dynamic membership menu item based on user role
+  const getMembershipNavItem = () => {
+    if (isStudentRole) {
+      return {
+        label: '👤 Membership của tôi',
+        href: '/my-memberships',
+        action: () => navigate('/my-memberships'),
+        isStudent: true
+      }
+    }
+    return {
+      label: 'Membership',
+      href: '/membership',
+      action: () => navigate('/membership'),
+      isStudent: false
+    }
+  }
+
   const navItems = [
     { label: 'Trang chủ', href: '/', action: () => navigate('/') },
     { label: isStudentRole ? 'Bài học' : 'Giáo án', href: '/lessons', action: () => navigate('/lessons') },
     { label: 'Tài liệu', href: '/documents', action: () => navigate('/documents') },
-    { label: 'Membership', href: '/membership', action: () => navigate('/membership') },
+    getMembershipNavItem(),
   ]
 
   return (
@@ -157,7 +174,11 @@ function Navbar() {
                   e.preventDefault()
                   executeNavAction(item.action)
                 }}
-                className="px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 font-medium text-sm"
+                className={`px-4 py-2 ${
+                  item.isStudent 
+                    ? 'text-purple-700 font-semibold border-2 border-purple-300 bg-purple-50 hover:bg-purple-100' 
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+                } rounded-lg transition-all duration-200 font-medium text-sm`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -253,7 +274,11 @@ function Navbar() {
                     e.preventDefault()
                     executeNavAction(item.action)
                   }}
-                  className="px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium"
+                  className={`px-4 py-2 ${
+                    item.isStudent 
+                      ? 'text-purple-700 font-semibold border-2 border-purple-300 bg-purple-50' 
+                      : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+                  } rounded-lg transition-colors font-medium`}
                 >
                   {item.label}
                 </a>
