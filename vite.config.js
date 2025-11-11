@@ -61,6 +61,8 @@ export default defineConfig({
           })
         },
       },
+      // Lesson Service Proxy - đi qua /api/lessons trên port 8888
+      // Không cần proxy riêng vì lesson service dùng /api/lessons và đi qua proxy /api
     },
   },
 })

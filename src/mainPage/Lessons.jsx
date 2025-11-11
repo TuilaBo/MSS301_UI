@@ -198,7 +198,7 @@ const Lessons = () => {
         setAuthError(true);
         setError(error.message);
       } else if (error.message === 'Failed to fetch') {
-        setError('Không thể kết nối đến lesson service (port 8888). Vui lòng kiểm tra:\n• Server lesson service có đang chạy?\n• CORS đã được cấu hình?\n• URL http://localhost:8888/api/lessons có đúng?');
+        setError('Không thể kết nối đến lesson service (port 8888). Vui lòng kiểm tra:\n• Server lesson service có đang chạy?\n• CORS đã được cấu hình?\n• URL có đúng không?');
       } else if (error.message?.includes('403') || error.status === 403) {
         // 403 error - có thể do CORS hoặc permissions
         setAuthError(true);
