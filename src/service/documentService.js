@@ -1,5 +1,7 @@
+import { API_BASE_URL } from '../config/apiConfig'
+
 // Document Service API - Vietnamese Literature Education System
-const DOCUMENT_API_BASE_URL = import.meta.env.DEV ? '/api' : 'http://localhost:8084/api'
+const DOCUMENT_API_BASE_URL = API_BASE_URL
 
 async function documentApiRequest(endpoint, options = {}) {
   const url = `${DOCUMENT_API_BASE_URL}${endpoint}`

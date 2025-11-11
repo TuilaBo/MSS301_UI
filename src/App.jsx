@@ -1,12 +1,24 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import HomePage from './mainPage/HomePage';
-import Documents from './mainPage/Documents';
-import Lessons from './mainPage/Lessons';
-import Login from './mainPage/authen/Login';
-import MembershipPlans from './mainPage/MembershipPlans';
-import UploadDocument from './mainPage/UploadDocument';
-import StudyPlan from './mainPage/StudyPlan';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import HomePage from './mainPage/HomePage'
+import Documents from './mainPage/Documents'
+import Lessons from './mainPage/Lessons'
+import Login from './mainPage/authen/Login'
+import Register from './mainPage/authen/Register'
+import OAuthCallback from './mainPage/authen/OAuthCallback'
+import Profile from './mainPage/Profile'
+import MembershipPlans from './mainPage/MembershipPlans'
+import MyMemberships from './mainPage/MyMemberships'
+import UploadDocument from './mainPage/UploadDocument'
+import StudyPlan from './mainPage/StudyPlan'
+import PaymentResult from './mainPage/PaymentResult'
+import PaymentRedirect from './mainPage/PaymentRedirect'
+import TakeTest from './mainPage/test/TakeTest'
+import TestDetail from './mainPage/test/TestDetail'
+import AttemptResult from './mainPage/test/AttemptResult'
+import LessonTestList from './mainPage/test/LessonTestList'
+import TeacherDashboard from './mainPage/teacher/TeacherDashboard'
+import TeacherTestForm from './mainPage/teacher/TeacherTestForm'
+import TeacherTestUpdate from './mainPage/teacher/TeacherTestUpdate'
 
 function App() {
   return (
@@ -20,13 +32,26 @@ function App() {
           <Route path="/upload" element={<UploadDocument />} />
           <Route path="/study-plan" element={<StudyPlan />} />
           <Route path="/membership" element={<MembershipPlans />} />
+          <Route path="/membership-plans" element={<MembershipPlans />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/oauth-callback" element={<OAuthCallback />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/my-memberships" element={<MyMemberships />} />
+          <Route path="/payment-result" element={<PaymentResult />} />
+          <Route path="/payment-redirect" element={<PaymentRedirect />} />
+          <Route path="/take-test" element={<TakeTest />} />
+          <Route path="/test-detail" element={<TestDetail />} />
+          <Route path="/test-result" element={<AttemptResult />} />
+          <Route path="/lesson-tests" element={<LessonTestList />} />
+          <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
+          <Route path="/teacher-test-form" element={<TeacherTestForm />} />
+          <Route path="/teacher-test-update" element={<TeacherTestUpdate />} />
+          <Route path="*" element={<HomePage />} />
         </Routes>
       </div>
     </Router>
-  );
+  )
 }
 
-export default App;
-
-
+export default App
