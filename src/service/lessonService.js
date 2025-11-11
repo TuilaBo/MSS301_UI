@@ -1,7 +1,14 @@
 import { API_BASE_URL } from '../config/apiConfig'
 
 // Lesson Service API
-const LESSON_API_BASE_URL = "http://localhost:8083"
+// Trong development, sử dụng relative URL để đi qua Vite proxy
+// Trong production, sử dụng absolute URL từ env variable
+// Lesson service chạy trên port 8888 cùng với auth service
+const LESSON_SERVICE_PORT = import.meta.env.VITE_LESSON_SERVICE_PORT || '8888'
+const LESSON_SERVICE_ORIGIN = import.meta.env.VITE_LESSON_SERVICE_ORIGIN || `http://localhost:${LESSON_SERVICE_PORT}`
+const LESSON_API_BASE_URL = import.meta.env.DEV && !import.meta.env.VITE_LESSON_SERVICE_ORIGIN
+  ? '/api' // Relative URL - sẽ đi qua proxy /api → port 8888
+  : `${LESSON_SERVICE_ORIGIN}/api`
 
 const buildDefaultHeaders = () => {
   const token = localStorage.getItem('accessToken')
@@ -26,8 +33,9 @@ async function lessonApiRequest(endpoint, options = {}) {
   const isPublicEndpoint = endpoint.includes('/public/') || endpoint === '/lessons' && options.method === undefined
   
   console.log('=== lessonApiRequest DEBUG ===')
+  console.log('LESSON_API_BASE_URL:', LESSON_API_BASE_URL)
   console.log('Endpoint:', endpoint)
-  console.log('URL:', url)
+  console.log('Final URL:', url)
   console.log('Token exists:', !!token)
   console.log('Token preview:', token ? `${token.substring(0, 20)}...` : 'No token')
   console.log('Is public endpoint:', isPublicEndpoint)
@@ -202,8 +210,11 @@ const lessonService = {
   
   // Test connection to lesson service (Health check - không cần token)
   testConnection: () => {
+    const healthUrl = `${LESSON_API_BASE_URL}/lessons/public/health`
     console.log('Testing connection to lesson service...')
-    return fetch(`${LESSON_API_BASE_URL}/lessons/public/health`, {
+    console.log('Health check URL:', healthUrl)
+    console.log('LESSON_API_BASE_URL:', LESSON_API_BASE_URL)
+    return fetch(healthUrl, {
       headers: buildDefaultHeaders()
     })
       .then(response => {
@@ -212,6 +223,7 @@ const lessonService = {
       })
       .catch(error => {
         console.error('Health check failed:', error)
+        console.error('Failed URL:', healthUrl)
         return false
       })
   },

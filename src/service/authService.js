@@ -51,6 +51,47 @@ export const authService = {
     return response
   },
 
+  registerTeacher: async (userData) => {
+    const response = await api.post('/auth/register-teacher', {
+      username: userData.username,
+      fullName: userData.fullName,
+      password: userData.password,
+      email: userData.email,
+      gender: userData.gender,
+      birthday: userData.birthday,
+    })
+
+    return response
+  },
+
+  verifyEmail: async (email, code) => {
+    // Endpoint không yêu cầu token, nên gửi request riêng không cần auth header
+    const response = await api.post('/auth/verify', { email, code }, {
+      headers: {
+        Authorization: undefined,
+      },
+    })
+
+    // Một số backend trả plain text nên đảm bảo trả về message
+    if (typeof response === 'string') {
+      return { message: response }
+    }
+    return response
+  },
+
+  resendVerificationCode: async (email) => {
+    const response = await api.post('/auth/resend-verification', { email }, {
+      headers: {
+        Authorization: undefined,
+      },
+    })
+
+    if (typeof response === 'string') {
+      return { message: response }
+    }
+    return response
+  },
+
   logout: () => {
     // Remove common token keys as well
     localStorage.removeItem('accessToken')
@@ -70,6 +111,23 @@ export const authService = {
 
   isAuthenticated: () => {
     return !!localStorage.getItem('accessToken')
+  },
+
+  getCurrentUser: async () => {
+    const response = await api.get('/auth/me')
+    return response
+  },
+
+  loginWithGoogle: () => {
+    // Redirect đến OAuth2 endpoint qua API Gateway
+    // OAuth2 redirect phải dùng absolute URL để browser tự redirect đến Google
+    // Không thể dùng relative URL vì proxy không follow OAuth2 redirects đúng cách
+    const oauthUrl = import.meta.env.VITE_API_ORIGIN 
+      ? `${import.meta.env.VITE_API_ORIGIN}/api/auth/oauth2/authorization/google`
+      : 'http://localhost:8888/api/auth/oauth2/authorization/google'
+    
+    console.log('Redirecting to OAuth2 endpoint:', oauthUrl)
+    window.location.href = oauthUrl
   },
 }
 

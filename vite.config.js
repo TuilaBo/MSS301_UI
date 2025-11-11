@@ -35,13 +35,34 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         ws: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, res) => {
+            console.log('Proxy error (api):', err)
+          })
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Proxying request to:', req.method, req.url, '→ http://localhost:8888' + req.url)
+          })
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Proxy response:', proxyRes.statusCode, req.url)
+          })
+        },
       },
       '/oauth2': {
         target: 'http://localhost:8888',
         changeOrigin: true,
         secure: false,
         ws: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, res) => {
+            console.log('Proxy error (oauth2):', err)
+          })
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Proxying OAuth2 request:', req.method, req.url)
+          })
+        },
       },
+      // Lesson Service Proxy - đi qua /api/lessons trên port 8888
+      // Không cần proxy riêng vì lesson service dùng /api/lessons và đi qua proxy /api
     },
   },
 })

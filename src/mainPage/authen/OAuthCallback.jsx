@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { authService } from '../../service/authService'
 
-function OAuthCallback({ onNavigate }) {
+function OAuthCallback() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const searchParams = useSearchParams()[0]
   const [status, setStatus] = useState('Đang xử lý...')
   const [error, setError] = useState('')
 
@@ -31,51 +35,94 @@ function OAuthCallback({ onNavigate }) {
       } catch (userErr) {
         console.warn('Failed to fetch user info:', userErr)
         // Throw error để handleOAuthCallback có thể xử lý
-        throw new Error('Không thể lấy thông tin người dùng. Token có thể không hợp lệ hoặc email chưa được đăng ký.')
+        throw new Error('Không thể lấy thông tin người dùng. Token có thể không hợp lệ.')
       }
     }
 
     const handleOAuthCallback = async () => {
       try {
-        // Extract token từ URL query params
-        // URL format: http://localhost:5173/#oauth-callback?token=JWT_TOKEN
+        // Log toàn bộ URL để debug
+        console.log('=== OAuth Callback Debug ===')
+        console.log('Full URL:', window.location.href)
+        console.log('Hash:', window.location.hash)
+        console.log('Search:', window.location.search)
+        console.log('Pathname:', window.location.pathname)
+        
+        // Extract token từ URL - hỗ trợ nhiều format
+        // Format 1: http://localhost:5173/#oauth-callback?token=JWT_TOKEN (hash-based)
+        // Format 2: http://localhost:5173/oauth-callback?token=JWT_TOKEN (path-based)
+        // Format 3: http://localhost:5173/oauth-callback#token=JWT_TOKEN (hash token)
+        
+        let token = null
+        
+        // Thử lấy từ hash trước (cho hash-based routing)
         const hash = window.location.hash
-        console.log('Current hash:', hash)
+        console.log('Hash value:', hash)
+        if (hash) {
+          // Format: #oauth-callback?token=xxx hoặc #token=xxx
+          if (hash.includes('?')) {
+            const hashParts = hash.split('?')
+            const hashParams = new URLSearchParams(hashParts[1] || '')
+            token = hashParams.get('token')
+            console.log('Token from hash query:', token ? 'Found' : 'Not found')
+          } else if (hash.includes('token=')) {
+            // Format: #token=xxx
+            const hashParams = new URLSearchParams(hash.replace('#', ''))
+            token = hashParams.get('token')
+            console.log('Token from hash param:', token ? 'Found' : 'Not found')
+          }
+        }
         
-        // Parse hash để lấy query params
-        const hashParts = hash.split('?')
-        const urlParams = new URLSearchParams(hashParts[1] || '')
-        const token = urlParams.get('token')
+        // Nếu không có trong hash, thử lấy từ search params (cho path-based routing)
+        if (!token) {
+          token = searchParams.get('token')
+          console.log('Token from searchParams:', token ? 'Found' : 'Not found')
+        }
         
-        console.log('Extracted token:', token ? 'Token found' : 'No token')
+        // Nếu vẫn không có, thử lấy từ window.location.search trực tiếp
+        if (!token && window.location.search) {
+          const urlParams = new URLSearchParams(window.location.search)
+          token = urlParams.get('token')
+          console.log('Token from location.search:', token ? 'Found' : 'Not found')
+        }
+        
+        // Thử parse từ toàn bộ URL nếu vẫn không có
+        if (!token) {
+          const fullUrl = window.location.href
+          const tokenMatch = fullUrl.match(/[?&#]token=([^&?#]+)/)
+          if (tokenMatch) {
+            token = decodeURIComponent(tokenMatch[1])
+            console.log('Token from URL regex:', token ? 'Found' : 'Not found')
+          }
+        }
+        
+        console.log('Final token check:', token ? `Token found (${token.substring(0, 20)}...)` : 'NO TOKEN FOUND')
+        console.log('Current localStorage accessToken:', localStorage.getItem('accessToken') ? 'Exists' : 'Not exists')
         
         if (!token) {
-          // Thử lấy từ window.location.search nếu không có trong hash
-          const searchParams = new URLSearchParams(window.location.search)
-          const tokenFromSearch = searchParams.get('token')
+          // Kiểm tra error từ URL
+          const errorParam = searchParams.get('error') || new URLSearchParams(window.location.search).get('error')
+          const errorMessage = searchParams.get('message') || new URLSearchParams(window.location.search).get('message')
           
-          if (tokenFromSearch) {
-            // Lưu token vào localStorage
-            localStorage.setItem('accessToken', tokenFromSearch)
-            localStorage.setItem('tokenType', 'Bearer')
-            
-            // Fetch user info
-            await fetchAndSaveUserInfo()
-            
-            setStatus('Đăng nhập thành công!')
-            window.dispatchEvent(new Event('storage'))
-            
-            setTimeout(() => {
-              if (onNavigate) {
-                onNavigate('home')
-              } else {
-                window.location.hash = 'home'
-              }
-            }, 1000)
-            return
+          console.log('Error param:', errorParam)
+          console.log('Error message:', errorMessage)
+          
+          if (errorParam) {
+            throw new Error(errorMessage || 'Đăng nhập với Google thất bại. Vui lòng thử lại.')
           }
           
-          throw new Error('Token không tìm thấy trong URL. Vui lòng thử đăng nhập lại.')
+          // Nếu không có token và không có error, có thể backend chưa redirect đúng
+          // Đợi thêm một chút để xem có redirect không
+          console.warn('No token found in URL. Waiting 2 seconds to check if backend redirects...')
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          
+          // Kiểm tra lại sau khi đợi
+          const urlParams = new URLSearchParams(window.location.search)
+          token = urlParams.get('token') || new URLSearchParams(window.location.hash.replace('#', '')).get('token')
+          
+          if (!token) {
+            throw new Error('Token không tìm thấy trong URL. Backend có thể chưa redirect đúng. Vui lòng thử đăng nhập lại.')
+          }
         }
         
         console.log('OAuth token received:', token.substring(0, 20) + '...')
@@ -83,9 +130,12 @@ function OAuthCallback({ onNavigate }) {
         // Lưu token vào localStorage
         localStorage.setItem('accessToken', token)
         localStorage.setItem('tokenType', 'Bearer')
+        console.log('Token saved to localStorage')
         
         // Fetch user info từ /api/auth/me
+        console.log('Fetching user info...')
         await fetchAndSaveUserInfo()
+        console.log('User info saved successfully')
         
         setStatus('Đăng nhập thành công!')
         
@@ -94,30 +144,30 @@ function OAuthCallback({ onNavigate }) {
         
         // Redirect về trang chủ sau 1 giây
         setTimeout(() => {
-          if (onNavigate) {
-            onNavigate('home')
-          } else {
-            window.location.hash = 'home'
-          }
+          console.log('Redirecting to /home')
+          navigate('/home')
         }, 1000)
       } catch (err) {
         console.error('OAuth callback error:', err)
+        console.error('Error details:', {
+          message: err.message,
+          stack: err.stack,
+          url: window.location.href
+        })
         setError(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.')
         setStatus('Lỗi')
         
-        // Redirect về trang login sau 3 giây
+        // Redirect về trang login với error message sau 3 giây
         setTimeout(() => {
-          if (onNavigate) {
-            onNavigate('login')
-          } else {
-            window.location.hash = 'login'
-          }
+          const errorMessage = encodeURIComponent(err.message || 'Đăng nhập thất bại')
+          console.log('Redirecting to login with error:', errorMessage)
+          navigate(`/login?error=oauth_failed&message=${errorMessage}`)
         }, 3000)
       }
     }
 
     handleOAuthCallback()
-  }, [onNavigate])
+  }, [navigate, searchParams, location])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 flex items-center justify-center p-4">
