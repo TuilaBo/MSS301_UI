@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { lessonService } from '../service/lessonService';
-import AuthStatus, { isAuthenticated, getUserInfo, handleLogout } from '../components/AuthStatus';
+import AuthStatus, { isAuthenticated, getUserInfo } from '../components/AuthStatus';
+import { useLessonTests } from '../hooks/useLessonTests';
+import { mockTestService } from '../service/testService/mockTestService';
+import LessonTestFormModal from '../components/lesson/LessonTestFormModal';
 
 const Lessons = () => {
   const navigate = useNavigate();
@@ -17,6 +20,53 @@ const Lessons = () => {
   const [filterDuration, setFilterDuration] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingLesson, setEditingLesson] = useState(null);
+  const decodedUserInfo = getUserInfo();
+  const storedRole = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
+  const normalizedRoles = useMemo(() => {
+    const collected = [];
+    const pushValue = (value) => {
+      if (!value) return;
+      if (Array.isArray(value)) {
+        value.forEach(pushValue);
+        return;
+      }
+      if (typeof value === 'object') {
+        pushValue(value.roleName || value.role);
+        pushValue(value.name);
+        pushValue(value.value);
+        pushValue(value.authority);
+        return;
+      }
+      if (typeof value === 'string') {
+        collected.push(value.toUpperCase());
+      }
+    };
+
+    pushValue(decodedUserInfo?.role);
+    pushValue(decodedUserInfo?.roles);
+    pushValue(decodedUserInfo?.scopes);
+    pushValue(decodedUserInfo?.authorities);
+    pushValue(storedRole);
+
+    return collected.filter(Boolean);
+  }, [decodedUserInfo, storedRole]);
+  const hasRole = (keyword) => normalizedRoles.some((role) => role.includes(keyword));
+  const canManageLessons = hasRole('TEACHER') || hasRole('ADMIN');
+  const isStudentRole = hasRole('STUDENT');
+  const lessonLabel = isStudentRole ? 'Bài học' : 'Giáo án';
+  const lessonLabelLower = lessonLabel.toLowerCase();
+  const lessonPageTitle = isStudentRole ? 'Xem Bài học' : 'Quản lý Giáo án';
+  const lessonPageIcon = isStudentRole ? '📖' : '📚';
+  const [testActionMessage, setTestActionMessage] = useState(null);
+  const [testActionIsError, setTestActionIsError] = useState(false);
+  const [testActionLoading, setTestActionLoading] = useState(false);
+  const [testModalConfig, setTestModalConfig] = useState(null);
+  const {
+    tests: lessonTests,
+    loading: lessonTestsLoading,
+    error: lessonTestsError,
+    refresh: refreshLessonTests,
+  } = useLessonTests(selectedLesson?.id, { skip: !selectedLesson?.id });
 
   // Reset filters and token when error occurs
   const handleResetAndRefresh = () => {
@@ -213,7 +263,7 @@ const Lessons = () => {
         setComponentError('Lỗi import module: ' + error.message);
         return; // Don't continue with normal error handling
       } else {
-        setError(error.message || 'Không thể tải danh sách giáo án');
+      setError(error.message || `Không thể tải danh sách ${lessonLabelLower}`);
       }
       setLessons([]);
     } finally {
@@ -225,34 +275,46 @@ const Lessons = () => {
 
   // Delete lesson
   const handleDeleteLesson = async (lessonId) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa giáo án này?')) {
+    if (!canManageLessons) {
+      alert(`Bạn không có quyền xóa ${lessonLabelLower}.`);
+      return;
+    }
+    if (window.confirm(`Bạn có chắc chắn muốn xóa ${lessonLabelLower} này?`)) {
       try {
         await lessonService.deleteLesson(lessonId);
         setLessons(lessons.filter(lesson => lesson.id !== lessonId));
         setSelectedLesson(null);
-        alert('Xóa giáo án thành công!');
+        alert(`Xóa ${lessonLabelLower} thành công!`);
       } catch (error) {
         console.error('Delete error:', error);
-        alert('Lỗi khi xóa giáo án: ' + error.message);
+        alert(`Lỗi khi xóa ${lessonLabelLower}: ${error.message}`);
       }
     }
   };
 
   // Create new lesson
   const handleCreateLesson = async (lessonData) => {
+    if (!canManageLessons) {
+      alert(`Bạn không có quyền tạo ${lessonLabelLower} mới.`);
+      return;
+    }
     try {
       const response = await lessonService.createLesson(lessonData);
       setLessons([...lessons, response.data || response]);
       setShowCreateModal(false);
-      alert('Tạo giáo án thành công!');
+      alert(`Tạo ${lessonLabelLower} thành công!`);
     } catch (error) {
       console.error('Create error:', error);
-      alert('Lỗi khi tạo giáo án: ' + error.message);
+      alert(`Lỗi khi tạo ${lessonLabelLower}: ${error.message}`);
     }
   };
 
   // Update lesson
   const handleUpdateLesson = async (lessonId, lessonData) => {
+    if (!canManageLessons) {
+      alert(`Bạn không có quyền chỉnh sửa ${lessonLabelLower}.`);
+      return;
+    }
     try {
       const response = await lessonService.updateLesson(lessonId, lessonData);
       const updatedLesson = response.data || response;
@@ -261,16 +323,54 @@ const Lessons = () => {
       ));
       setEditingLesson(null);
       setSelectedLesson(updatedLesson);
-      alert('Cập nhật giáo án thành công!');
+      alert(`Cập nhật ${lessonLabelLower} thành công!`);
     } catch (error) {
       console.error('Update error:', error);
-      alert('Lỗi khi cập nhật giáo án: ' + error.message);
+      alert(`Lỗi khi cập nhật ${lessonLabelLower}: ${error.message}`);
+    }
+  };
+
+  const handleCreateTestForLesson = () => {
+    if (!canManageLessons || !selectedLesson?.id) return;
+    setTestModalConfig({ mode: 'create', test: null });
+  };
+
+  const handleOpenQuestionManagerFromModal = (testId) => {
+    if (!testId) return;
+    setTestModalConfig(null);
+    navigate(`/test-detail?testId=${testId}`);
+  };
+
+  const handleDeleteTestForLesson = async (testId) => {
+    if (!canManageLessons || !testId) return;
+    const confirmed = window.confirm(`Bạn có chắc chắn muốn xóa bài test này khỏi ${lessonLabelLower}?`);
+    if (!confirmed) return;
+    setTestActionLoading(true);
+    setTestActionMessage(null);
+    setTestActionIsError(false);
+    try {
+      await mockTestService.deleteMockTest(testId);
+      setTestActionMessage('Đã xóa bài test thành công.');
+      setTestActionIsError(false);
+      await refreshLessonTests();
+    } catch (err) {
+      console.error('Delete test error:', err);
+      setTestActionMessage(err.message || 'Không thể xóa bài test.');
+      setTestActionIsError(true);
+    } finally {
+      setTestActionLoading(false);
     }
   };
 
   useEffect(() => {
     fetchLessons();
   }, []);
+
+  useEffect(() => {
+    setTestActionMessage(null);
+    setTestActionIsError(false);
+    setTestActionLoading(false);
+  }, [selectedLesson?.id]);
 
   // Auto-fetch when filters change - DISABLED server-side filtering, use client-side only
   useEffect(() => {
@@ -353,7 +453,7 @@ const Lessons = () => {
           className="text-center"
         >
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-xl text-gray-600">Đang tải giáo án từ server...</p>
+          <p className="text-xl text-gray-600">Đang tải {lessonLabelLower} từ server...</p>
         </motion.div>
       </div>
     );
@@ -453,11 +553,11 @@ const Lessons = () => {
                   <span className="hidden sm:block">Trang chủ</span>
                 </motion.button>
                 <h1 className="text-2xl lg:text-4xl font-bold text-gray-800">
-                  📚 Quản lý Giáo án
+                  {lessonPageIcon} {lessonPageTitle}
                 </h1>
               </div>
               <p className="text-gray-600 text-sm lg:text-base">
-                Kho tài liệu giảng dạy chất lượng cao ({lessons.length} giáo án)
+                Kho tài liệu giảng dạy chất lượng cao ({lessons.length} {lessonLabelLower})
               </p>
             </div>
             
@@ -475,16 +575,29 @@ const Lessons = () => {
               className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg"
             >
               <p className="text-sm text-blue-700 mb-2">
-                � <strong>Chế độ xem công khai:</strong> Bạn đang xem danh sách giáo án công khai.
+                🌐 <strong>Chế độ xem công khai:</strong> Bạn đang xem danh sách {lessonLabelLower} công khai.
               </p>
               <p className="text-sm text-blue-600">
-                💡 Để xem tất cả giáo án và sử dụng đầy đủ tính năng (tạo, sửa, xóa), vui lòng đăng nhập bằng tài khoản giáo viên.
+                💡 Để xem tất cả {lessonLabelLower} và sử dụng đầy đủ tính năng (tạo, sửa, xóa), vui lòng đăng nhập bằng tài khoản giáo viên.
                 <button 
                   onClick={() => navigate('/login')}
                   className="ml-2 text-blue-600 hover:text-blue-800 underline font-medium"
                 >
                   Đăng nhập ngay →
                 </button>
+              </p>
+            </motion.div>
+          ) : !canManageLessons ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg"
+            >
+              <p className="text-sm text-amber-800 mb-1">
+                {isStudentRole ? '👨‍🎓' : '🔒'} <strong>{isStudentRole ? 'Tài khoản học sinh' : 'Quyền truy cập hạn chế'}:</strong> Bạn chỉ có quyền xem nội dung {lessonLabelLower}.
+              </p>
+              <p className="text-sm text-amber-700">
+                Các thao tác tạo, chỉnh sửa hoặc xóa đã được vô hiệu hóa. Nếu bạn là giáo viên, vui lòng đăng nhập bằng tài khoản tương ứng.
               </p>
             </motion.div>
           ) : (
@@ -494,7 +607,7 @@ const Lessons = () => {
               className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg"
             >
               <p className="text-sm text-green-700">
-                ✅ <strong>Đã đăng nhập:</strong> Bạn có quyền truy cập đầy đủ vào hệ thống quản lý giáo án.
+                ✅ <strong>Đã đăng nhập:</strong> Bạn có quyền truy cập đầy đủ vào hệ thống {isStudentRole ? 'xem' : 'quản lý'} {lessonLabelLower}.
               </p>
             </motion.div>
           )}
@@ -511,7 +624,7 @@ const Lessons = () => {
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-800 flex items-center">
-              🔍 <span className="ml-2">Tìm kiếm & Lọc giáo án</span>
+              🔍 <span className="ml-2">Tìm kiếm & Lọc {lessonLabelLower}</span>
             </h2>
             <div className="flex items-center space-x-3">
               <span className="text-sm text-gray-500 bg-blue-50 px-3 py-1 rounded-full">
@@ -544,14 +657,16 @@ const Lessons = () => {
             </div>
 
             {/* Create Button */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowCreateModal(true)}
-              className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
-            >
-              ✨ Tạo giáo án mới
-            </motion.button>
+            {canManageLessons && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowCreateModal(true)}
+                className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
+              >
+                ✨ Tạo {lessonLabelLower} mới
+              </motion.button>
+            )}
           </div>
 
           {/* Filters Row */}
@@ -690,7 +805,7 @@ const Lessons = () => {
           >
             <div className="text-6xl mb-4">📚</div>
             <h3 className="text-xl font-semibold text-gray-600 mb-2">
-              Không tìm thấy giáo án
+              Không tìm thấy {lessonLabelLower}
             </h3>
             <p className="text-gray-500">
               Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc
@@ -780,6 +895,104 @@ const Lessons = () => {
                 <p className="text-gray-700 leading-relaxed break-words overflow-wrap-anywhere">{selectedLesson.content}</p>
               </div>
 
+              {/* Related Tests */}
+              <div className="bg-white border border-blue-100 p-6 rounded-lg mb-6 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <h3 className="text-lg font-semibold text-blue-800">
+                    🧪 Bài kiểm tra liên quan
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        navigate(`/lesson-tests?lessonId=${selectedLesson.id}`)
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                      Xem tất cả bài test
+                    </motion.button>
+                    {canManageLessons && (
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleCreateTestForLesson}
+                        disabled={testActionLoading}
+                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-70"
+                      >
+                        + Thêm bài test
+                      </motion.button>
+                    )}
+                  </div>
+                </div>
+
+                {testActionMessage && (
+                  <p
+                    className={`text-sm mb-3 ${
+                      testActionIsError ? 'text-red-600' : 'text-emerald-600'
+                    }`}
+                  >
+                    {testActionMessage}
+                  </p>
+                )}
+
+                {lessonTestsLoading && (
+                  <p className="text-sm text-blue-600">Đang tải danh sách bài test...</p>
+                )}
+                {lessonTestsError && (
+                  <p className="text-sm text-red-600">
+                    Không thể tải bài test: {lessonTestsError.message || 'Vui lòng thử lại sau.'}
+                  </p>
+                )}
+                {!lessonTestsLoading && !lessonTestsError && (
+                  lessonTests.length > 0 ? (
+                    <div className="space-y-3">
+                      {lessonTests.map((test) => (
+                        <div
+                          key={test.id}
+                          className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100"
+                        >
+                          <div>
+                            <p className="text-xs uppercase tracking-widest text-blue-500 font-semibold">
+                              Mock Test #{test.id}
+                            </p>
+                            <p className="text-base font-semibold text-gray-800 mt-1">{test.name}</p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {Math.round((test.durationSeconds || 0) / 60)} phút • {test.questions?.length || 0} câu hỏi • Tổng {test.totalPoint || 0} điểm
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => {
+                                navigate(`/test-detail?testId=${test.id}`)
+                              }}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                            >
+                              Xem chi tiết
+                            </motion.button>
+                            {canManageLessons && (
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleDeleteTestForLesson(test.id)}
+                                disabled={testActionLoading}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-70"
+                              >
+                                Xóa
+                              </motion.button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-600">Chưa có bài test nào được gán cho {lessonLabelLower} này.</p>
+                  )
+                )}
+              </div>
+
               {/* Meta Information & Actions */}
               <div className="border-t pt-6 mt-6">
                 <div className="flex flex-wrap items-center justify-between text-sm text-gray-500 mb-4">
@@ -798,41 +1011,49 @@ const Lessons = () => {
                     ← Đóng
                   </motion.button>
                   
-                  <div className="flex space-x-3">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        if (selectedLesson && selectedLesson.id) {
-                          setEditingLesson(selectedLesson)
-                        } else {
-                          alert('Không thể chỉnh sửa: Thiếu thông tin giáo án')
-                        }
-                      }}
-                      className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
-                    >
-                      ✏️ Chỉnh sửa
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        if (selectedLesson && selectedLesson.id) {
-                          handleDeleteLesson(selectedLesson.id)
-                        } else {
-                          alert('Không thể xóa: Thiếu thông tin giáo án')
-                        }
-                      }}
-                      className="px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
-                    >
-                      🗑️ Xóa
-                    </motion.button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {canManageLessons ? (
+                      <>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            if (selectedLesson && selectedLesson.id) {
+                              setEditingLesson(selectedLesson)
+                            } else {
+                              alert(`Không thể chỉnh sửa: Thiếu thông tin ${lessonLabelLower}`)
+                            }
+                          }}
+                          className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+                        >
+                          ✏️ Chỉnh sửa
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            if (selectedLesson && selectedLesson.id) {
+                              handleDeleteLesson(selectedLesson.id)
+                            } else {
+                              alert(`Không thể xóa: Thiếu thông tin ${lessonLabelLower}`)
+                            }
+                          }}
+                          className="px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+                        >
+                          🗑️ Xóa
+                        </motion.button>
+                      </>
+                    ) : (
+                      <span className="px-4 py-2 text-sm text-amber-700 bg-amber-100 rounded-xl font-medium">
+                        👨‍🎓 Chế độ xem chỉ đọc
+                      </span>
+                    )}
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => window.print()}
                     >
-                      📄 In giáo án
+                      📄 In {lessonLabelLower}
                     </motion.button>
                   </div>
                 </div>
@@ -843,9 +1064,9 @@ const Lessons = () => {
       )}
 
       {/* Create Lesson Modal */}
-      {showCreateModal && (
+      {canManageLessons && showCreateModal && (
         <LessonFormModal
-          title="Tạo giáo án mới"
+          title={`Tạo ${lessonLabelLower} mới`}
           onClose={() => setShowCreateModal(false)}
           onSubmit={handleCreateLesson}
           lessonTypes={lessonTypes}
@@ -853,13 +1074,28 @@ const Lessons = () => {
       )}
 
       {/* Edit Lesson Modal */}
-      {editingLesson && (
+      {canManageLessons && editingLesson && (
         <LessonFormModal
-          title="Chỉnh sửa giáo án"
+          title={`Chỉnh sửa ${lessonLabelLower}`}
           lesson={editingLesson}
           onClose={() => setEditingLesson(null)}
           onSubmit={(data) => handleUpdateLesson(editingLesson.id, data)}
           lessonTypes={lessonTypes}
+        />
+      )}
+
+      {canManageLessons && testModalConfig && selectedLesson && (
+        <LessonTestFormModal
+          open
+          mode={testModalConfig.mode}
+          lessonId={selectedLesson.id}
+          test={testModalConfig.test}
+          onClose={() => setTestModalConfig(null)}
+          onSuccess={() => {
+            setTestModalConfig(null)
+            refreshLessonTests()
+          }}
+          onOpenQuestionManager={handleOpenQuestionManagerFromModal}
         />
       )}
     </div>
