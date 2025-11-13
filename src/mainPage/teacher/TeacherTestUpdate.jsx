@@ -1,9 +1,9 @@
+import { useSearchParams } from 'react-router-dom'
 import TeacherTestForm from './TeacherTestForm'
-import { useHashParams } from '../../hooks/useHashParams'
 
 function TeacherTestUpdate({ onNavigate }) {
-  const params = useHashParams()
-  const testId = params.get('testId')
+  const [searchParams] = useSearchParams()
+  const testId = searchParams.get('testId')
 
   return <TeacherTestForm onNavigate={onNavigate} mode="update" initialTestId={testId} />
 }

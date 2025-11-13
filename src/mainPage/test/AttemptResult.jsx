@@ -1,14 +1,15 @@
 import { useMemo } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import ResultQuestionCard from '../../components/takeTest/ResultQuestionCard'
-import { useHashParams } from '../../hooks/useHashParams'
 import { useMockAttemptResult } from '../../hooks/useMockAttemptResult'
 import { useMockTestDetail } from '../../hooks/useMockTestDetail'
 
 function AttemptResult({ onNavigate }) {
-  const params = useHashParams()
-  const attemptId = params.get('attemptId')
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const attemptId = searchParams.get('attemptId')
 
   const { data: attempt, loading, error } = useMockAttemptResult(attemptId, { skip: !attemptId })
   const { data: testDetail, loading: testLoading } = useMockTestDetail(attempt?.mockTestId, {
@@ -31,7 +32,15 @@ function AttemptResult({ onNavigate }) {
 
   const handleRetake = () => {
     if (!attempt?.mockTestId) return
-    window.location.hash = `take-test?testId=${attempt.mockTestId}`
+    navigate(`/take-test?testId=${attempt.mockTestId}`)
+  }
+
+  const handleGoHome = () => {
+    if (onNavigate) {
+      onNavigate('home')
+    } else {
+      navigate('/')
+    }
   }
 
   return (
@@ -110,7 +119,7 @@ function AttemptResult({ onNavigate }) {
                   <button
                     type="button"
                     className="px-6 py-3 border border-gray-300 text-gray-700 rounded-2xl font-semibold hover:bg-gray-50 transition"
-                    onClick={() => onNavigate && onNavigate('home')}
+                    onClick={handleGoHome}
                   >
                     Về trang chủ
                   </button>

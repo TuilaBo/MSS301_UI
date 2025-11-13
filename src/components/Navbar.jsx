@@ -1,15 +1,47 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import AuthStatus, { isAuthenticated } from './AuthStatus'
+import AuthStatus from './AuthStatus'
 import { authService } from '../service/authService'
 
 function Navbar() {
   const navigate = useNavigate()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [userInfo, setUserInfo] = useState(null)
   const [isAuth, setIsAuth] = useState(false)
+  const [userInfo, setUserInfo] = useState(null)
+  const storedRole = typeof window !== 'undefined' ? localStorage.getItem('role') : null
+
+  const normalizedRoles = useMemo(() => {
+    const collected = []
+    const pushValue = (value) => {
+      if (!value) return
+      if (Array.isArray(value)) {
+        value.forEach(pushValue)
+        return
+      }
+      if (typeof value === 'object') {
+        pushValue(value.roleName || value.role)
+        pushValue(value.name)
+        pushValue(value.value)
+        pushValue(value.authority)
+        return
+      }
+      if (typeof value === 'string') {
+        collected.push(value.toUpperCase())
+      }
+    }
+
+    pushValue(userInfo?.role)
+    pushValue(userInfo?.roles)
+    pushValue(userInfo?.scopes)
+    pushValue(storedRole)
+
+    return collected.filter(Boolean)
+  }, [userInfo, storedRole])
+
+  const hasRole = (keyword) => normalizedRoles.some((role) => role.includes(keyword))
+  const isStudentRole = hasRole('STUDENT')
 
   useEffect(() => {
     const handleScroll = () => {
@@ -76,20 +108,37 @@ function Navbar() {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' })
     }
+  }
+
+  const executeNavAction = (action) => {
+    if (typeof action === 'function') {
+      action()
+    }
     setIsMobileMenuOpen(false)
   }
 
-  const roleName = userInfo?.role?.roleName || localStorage.getItem('role')
+  const isAdminRole = hasRole('ADMIN')
+  const membershipNavItem = isStudentRole
+    ? {
+        label: '👤 Membership của tôi',
+        href: '/my-memberships',
+        action: () => navigate('/my-memberships'),
+        isStudent: true,
+      }
+    : {
+        label: 'Membership',
+        href: '/membership',
+        action: () => navigate('/membership'),
+        isStudent: false,
+      }
 
   const navItems = [
     { label: 'Trang chủ', href: '/', action: () => navigate('/') },
-    { label: 'Giáo án', href: '/lessons', action: () => navigate('/lessons') },
+    { label: isStudentRole ? 'Bài học' : 'Giáo án', href: '/lessons', action: () => navigate('/lessons') },
     { label: 'Tài liệu', href: '/documents', action: () => navigate('/documents') },
     { label: 'Bài tập', href: '#features', action: () => scrollToSection('features') },
-    { label: 'Membership', href: '/membership', action: () => navigate('/membership') },
-    ...(roleName === 'ADMIN'
-      ? [{ label: 'Quản trị', href: '/admin', action: () => navigate('/admin') }]
-      : []),
+    membershipNavItem,
+    ...(isAdminRole ? [{ label: 'Quản trị', href: '/admin', action: () => navigate('/admin') }] : []),
   ]
 
   return (
@@ -129,9 +178,13 @@ function Navbar() {
                 href={item.href}
                 onClick={(e) => {
                   e.preventDefault()
-                  item.action()
+                  executeNavAction(item.action)
                 }}
-                className="px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 font-medium text-sm"
+                className={`px-4 py-2 ${
+                  item.isStudent 
+                    ? 'text-purple-700 font-semibold border-2 border-purple-300 bg-purple-50 hover:bg-purple-100' 
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+                } rounded-lg transition-all duration-200 font-medium text-sm`}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -225,9 +278,13 @@ function Navbar() {
                   href={item.href}
                   onClick={(e) => {
                     e.preventDefault()
-                    item.action()
+                    executeNavAction(item.action)
                   }}
-                  className="px-4 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium"
+                  className={`px-4 py-2 ${
+                    item.isStudent 
+                      ? 'text-purple-700 font-semibold border-2 border-purple-300 bg-purple-50' 
+                      : 'text-gray-700 hover:text-blue-600 hover:bg-blue-50'
+                  } rounded-lg transition-colors font-medium`}
                 >
                   {item.label}
                 </a>

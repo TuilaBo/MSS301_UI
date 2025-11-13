@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { paymentService } from '../service/paymentService'
+import { authService } from '../service/authService'
 import { testApiConnections, displayApiStatus } from '../utils/apiTest'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
@@ -13,6 +14,7 @@ function MembershipPlans() {
   const [memberships, setMemberships] = useState([])
   const [fetchingMemberships, setFetchingMemberships] = useState(true)
   const [apiTestResults, setApiTestResults] = useState(null)
+  const [userRole, setUserRole] = useState(null)
 
   // Test API connections
   const handleTestApi = async () => {
@@ -21,6 +23,21 @@ function MembershipPlans() {
     setApiTestResults(results)
     displayApiStatus(results)
   }
+
+  // Check user role
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const user = await authService.getCurrentUser()
+        if (user && user.role) {
+          setUserRole(user.role.roleName)
+        }
+      } catch (err) {
+        console.error('Error checking user role:', err)
+      }
+    }
+    checkUserRole()
+  }, [])
 
   // Fetch memberships from API
   useEffect(() => {
@@ -148,6 +165,33 @@ function MembershipPlans() {
           )}
         </motion.div>
 
+        {/* Teacher Notice */}
+        {userRole === 'TEACHER' && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-2xl mx-auto mb-6 bg-gradient-to-r from-orange-50 to-orange-100 border-2 border-orange-300 px-6 py-6 rounded-lg shadow-md"
+          >
+            <div className="flex items-start space-x-4">
+              <div className="text-3xl">👨‍🏫</div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-orange-800 mb-2">
+                  Thông báo dành cho Giảng Viên
+                </h3>
+                <p className="text-orange-700 mb-4">
+                  Tính năng Membership chỉ dành cho Học Sinh. Giảng viên vui lòng sử dụng các tính năng dành riêng cho giáo viên.
+                </p>
+                <button
+                  onClick={() => navigate('/teacher/dashboard')}
+                  className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200"
+                >
+                  Về Teacher Dashboard
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Error Message */}
         {error && (
           <motion.div
@@ -256,10 +300,10 @@ function MembershipPlans() {
                   {/* Purchase Button */}
                   <button
                     onClick={() => handlePurchase(tier)}
-                    disabled={loading}
+                    disabled={loading || userRole === 'TEACHER'}
                     className={`w-full bg-gradient-to-r ${colorClasses[info.color]} hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200`}
                   >
-                    {loading ? 'Đang xử lý...' : 'Mua ngay'}
+                    {loading ? 'Đang xử lý...' : userRole === 'TEACHER' ? 'Chỉ dành cho Học Sinh' : 'Mua ngay'}
                   </button>
                 </div>
               </motion.div>

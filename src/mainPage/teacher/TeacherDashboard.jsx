@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import TeacherLayout from '../../components/teacher/TeacherLayout'
 import { mockTestService } from '../../service/testService/mockTestService'
 
 function TeacherDashboard({ onNavigate }) {
+  const navigate = useNavigate()
   const [tests, setTests] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -40,11 +42,11 @@ function TeacherDashboard({ onNavigate }) {
   }
 
   const handleCreate = () => {
-    window.location.hash = 'teacher-test-form?mode=create'
+    navigate('/lessons')
   }
 
   const handleEdit = (testId) => {
-    window.location.hash = `teacher-test-update?testId=${testId}`
+    navigate(`/teacher-test-update?testId=${testId}`)
   }
 
   return (
@@ -63,6 +65,11 @@ function TeacherDashboard({ onNavigate }) {
           >
             + Thêm bài test
           </button>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl text-sm">
+          Thêm bài test mới trực tiếp tại trang Lesson bằng cách mở giáo án cụ thể và chọn &quot;+ Thêm bài
+          test&quot; trong phần chi tiết.
         </div>
 
         {actionMessage && (

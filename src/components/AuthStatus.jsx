@@ -13,15 +13,31 @@ export const getUserInfo = () => {
   
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
+    const normalizeToArray = (value) => {
+      if (!value) return [];
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string') {
+        return value.includes(' ') ? value.split(' ') : [value];
+      }
+      return [];
+    };
+    const scopes = normalizeToArray(payload.scp || payload.scope);
+    const authorities = normalizeToArray(payload.roles || payload.authorities || payload.role);
+    const primaryRole =
+      typeof payload.role === 'string'
+        ? payload.role
+        : authorities[0] || scopes[0] || 'user';
     return {
       username: payload.sub || payload.username || payload.email || 'User',
       email: payload.email || '',
-      role: payload.role || payload.authorities || 'user',
+      role: primaryRole,
+      roles: authorities,
+      scopes,
       exp: payload.exp
     };
   } catch (error) {
     console.error('Error parsing token:', error);
-    return { username: 'User', email: '', role: 'user' };
+    return { username: 'User', email: '', role: 'user', roles: [], scopes: [] };
   }
 };
 

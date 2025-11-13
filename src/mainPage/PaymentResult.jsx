@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { paymentService } from '../service/paymentService'
 
 function PaymentResult({ onNavigate }) {
+  const navigate = useNavigate()
   const [status, setStatus] = useState('loading')
   const [paymentInfo, setPaymentInfo] = useState(null)
   const [membership, setMembership] = useState(null)
@@ -112,7 +114,7 @@ function PaymentResult({ onNavigate }) {
     if (onNavigate) {
       onNavigate('home')
     } else {
-      window.location.hash = 'home'
+      navigate('/')
     }
   }
 
@@ -120,7 +122,7 @@ function PaymentResult({ onNavigate }) {
     if (onNavigate) {
       onNavigate('my-memberships')
     } else {
-      window.location.hash = 'my-memberships'
+      navigate('/my-memberships')
     }
   }
 
@@ -364,7 +366,7 @@ function PaymentResult({ onNavigate }) {
                 if (onNavigate) {
                   onNavigate('membership-plans')
                 } else {
-                  window.location.hash = 'membership-plans'
+                  navigate('/membership-plans')
                 }
               }}
               className="bg-white hover:bg-gray-50 text-gray-800 font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"

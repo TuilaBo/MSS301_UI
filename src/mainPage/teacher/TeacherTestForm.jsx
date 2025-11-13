@@ -1,34 +1,41 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import TeacherLayout from '../../components/teacher/TeacherLayout'
-import { useHashParams } from '../../hooks/useHashParams'
 import { mockTestService } from '../../service/testService/mockTestService'
+
+const TIER_OPTIONS = [
+  { value: 'BASIC', label: 'BASIC (Tier 1)' },
+  { value: 'SILVER', label: 'SILVER (Tier 2)' },
+  { value: 'GOLD', label: 'GOLD (Tier 3)' },
+  { value: 'PLATINUM', label: 'PLATINUM (Tier 4)' },
+]
 
 const initialFormState = {
   name: '',
   durationMinutes: 60,
-  totalPoint: 100,
   lessonPlanId: '',
-  requiredTier: '',
-  questionIds: '',
+  requiredTier: 'BASIC',
 }
 
 function TeacherTestForm({ onNavigate, mode = 'auto', initialTestId }) {
-  const params = useHashParams()
-  const hashMode = params.get('mode')
-  const hashTestId = params.get('testId')
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const queryMode = searchParams.get('mode')
+  const queryTestId = searchParams.get('testId')
+  const presetLessonId = searchParams.get('lessonPlanId')
 
   const resolvedMode =
     mode !== 'auto'
       ? mode
-      : hashMode === 'update'
+      : queryMode === 'update'
         ? 'update'
-        : hashMode === 'create'
+        : queryMode === 'create'
           ? 'create'
-          : hashTestId
+          : queryTestId
             ? 'update'
             : 'create'
 
-  const effectiveTestId = initialTestId || hashTestId
+  const effectiveTestId = initialTestId || queryTestId
   const isEditMode = resolvedMode === 'update'
 
   const [formData, setFormData] = useState(initialFormState)
@@ -51,12 +58,8 @@ function TeacherTestForm({ onNavigate, mode = 'auto', initialTestId }) {
         setFormData({
           name: detail?.name || '',
           durationMinutes: Math.max(1, Math.round((detail?.durationSeconds || 60) / 60)),
-          totalPoint: detail?.totalPoint || 0,
           lessonPlanId: detail?.lessonPlanId || '',
-          requiredTier: detail?.requiredTier || '',
-          questionIds: Array.isArray(detail?.questions)
-            ? detail.questions.map((q) => q.id).join(', ')
-            : '',
+          requiredTier: detail?.requiredTier || 'BASIC',
         })
       } catch (err) {
         setError(err)
@@ -67,6 +70,15 @@ function TeacherTestForm({ onNavigate, mode = 'auto', initialTestId }) {
 
     loadTest()
   }, [isEditMode, effectiveTestId])
+
+  useEffect(() => {
+    if (isEditMode) return
+    if (!presetLessonId) return
+    setFormData((prev) => {
+      if (prev.lessonPlanId) return prev
+      return { ...prev, lessonPlanId: presetLessonId }
+    })
+  }, [presetLessonId, isEditMode])
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -79,22 +91,22 @@ function TeacherTestForm({ onNavigate, mode = 'auto', initialTestId }) {
   const payload = useMemo(() => {
     const durationSeconds = Math.max(60, Number(formData.durationMinutes || 0) * 60)
     const lessonPlanIdNumeric = formData.lessonPlanId ? Number(formData.lessonPlanId) : null
-    const questionIds = formData.questionIds
-      ? formData.questionIds
-          .split(',')
-          .map((id) => Number(id.trim()))
-          .filter((id) => !Number.isNaN(id))
-      : []
 
     return {
       name: formData.name,
       durationSeconds,
-      totalPoint: Number(formData.totalPoint || 0),
       lessonPlanId: lessonPlanIdNumeric || null,
       requiredTier: formData.requiredTier || null,
-      questionIds,
     }
   }, [formData])
+
+  const goToDashboard = () => {
+    if (onNavigate) {
+      onNavigate('teacher-dashboard')
+    } else {
+      navigate('/teacher-dashboard')
+    }
+  }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -115,7 +127,7 @@ function TeacherTestForm({ onNavigate, mode = 'auto', initialTestId }) {
         setFormData(initialFormState)
       }
       setTimeout(() => {
-        window.location.hash = 'teacher-dashboard'
+        goToDashboard()
       }, 1000)
     } catch (err) {
       setError(err)
@@ -142,7 +154,7 @@ function TeacherTestForm({ onNavigate, mode = 'auto', initialTestId }) {
           <button
             type="button"
             className="px-6 py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold hover:border-blue-300 hover:text-blue-600 transition"
-            onClick={() => (window.location.hash = 'teacher-dashboard')}
+            onClick={goToDashboard}
           >
             ← Quay lại danh sách
           </button>
@@ -166,93 +178,88 @@ function TeacherTestForm({ onNavigate, mode = 'auto', initialTestId }) {
           </div>
         ) : (
           <form className="space-y-6" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">
-                Tên bài test <span className="text-red-500">*</span>
-              </span>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="Ví dụ: Kiểm tra Văn học Việt Nam"
-              />
-            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-gray-700">
+                  Tên bài test <span className="text-red-500">*</span>
+                </span>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="Ví dụ: Kiểm tra Văn học Việt Nam"
+                />
+              </label>
 
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">
-                Thời lượng (phút) <span className="text-red-500">*</span>
-              </span>
-              <input
-                type="number"
-                min="1"
-                name="durationMinutes"
-                value={formData.durationMinutes}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="60"
-              />
-            </label>
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-gray-700">
+                  Thời lượng (phút) <span className="text-red-500">*</span>
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  name="durationMinutes"
+                  value={formData.durationMinutes}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="60"
+                />
+              </label>
 
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">
-                Tổng điểm <span className="text-red-500">*</span>
-              </span>
-              <input
-                type="number"
-                min="0"
-                name="totalPoint"
-                value={formData.totalPoint}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="100"
-              />
-            </label>
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-gray-700">Lesson Plan ID (tự động)</span>
+                <input
+                  type="text"
+                  value={formData.lessonPlanId}
+                  readOnly
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
+                  placeholder="Được gắn từ trang Lesson"
+                />
+                <span className="text-xs text-gray-500">
+                  Mở giáo án trong trang Lesson và tạo test trực tiếp để tự động điền ID.
+                </span>
+              </label>
 
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-gray-700">Lesson Plan ID</span>
-              <input
-                type="number"
-                name="lessonPlanId"
-                value={formData.lessonPlanId}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="Nhập ID giáo án"
-              />
-            </label>
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-sm font-semibold text-gray-700">Tier membership</span>
+                <select
+                  name="requiredTier"
+                  value={formData.requiredTier}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  {TIER_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
 
-            <label className="space-y-2 md:col-span-2">
-              <span className="text-sm font-semibold text-gray-700">Tier yêu cầu</span>
-              <input
-                type="text"
-                name="requiredTier"
-                value={formData.requiredTier}
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                placeholder="Ví dụ: PREMIUM"
-              />
-            </label>
-          </div>
-
-          <label className="space-y-2 block">
-            <span className="text-sm font-semibold text-gray-700">Danh sách Question IDs</span>
-            <textarea
-              name="questionIds"
-              value={formData.questionIds}
-              onChange={handleChange}
-              rows="4"
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="Nhập danh sách ID câu hỏi, ví dụ: 12, 45, 46"
-            />
-            <span className="text-xs text-gray-500">
-              Mỗi ID cách nhau bởi dấu phẩy. Để trống nếu sẽ gán câu hỏi sau.
-            </span>
-          </label>
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 space-y-3">
+              <p className="text-sm font-semibold text-blue-800">Quản lý câu hỏi</p>
+              <p className="text-sm text-blue-700">
+                Sau khi lưu, hãy vào trang chi tiết bài test để thêm, sửa hoặc xóa câu hỏi. Tổng điểm được
+                tính tự động = số câu hỏi × 10 điểm.
+              </p>
+              <button
+                type="button"
+                disabled={!isEditMode || !effectiveTestId}
+                onClick={() => effectiveTestId && navigate(`/test-detail?testId=${effectiveTestId}`)}
+                className={`px-5 py-2 rounded-xl font-semibold ${
+                  isEditMode && effectiveTestId
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {isEditMode ? 'Mở trang quản lý câu hỏi' : 'Lưu trước để thêm câu hỏi'}
+              </button>
+            </div>
 
             <button
               type="submit"
