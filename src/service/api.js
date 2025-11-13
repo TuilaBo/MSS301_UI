@@ -1,40 +1,53 @@
 import { API_BASE_URL } from '../config/apiConfig'
 
 async function apiRequest(endpoint, options = {}) {
-  const url = `${API_BASE_URL}${endpoint}`
+  const { skipAuth, ...restOptions } = options
+  const isAbsolute = typeof endpoint === 'string' && /^https?:\/\//i.test(endpoint)
+  const url = isAbsolute ? endpoint : `${API_BASE_URL}${endpoint}`
   
   const config = {
     headers: {
       'Content-Type': 'application/json',
       'accept': '*/*',
-      ...options.headers,
+      ...restOptions.headers,
     },
-    ...options,
+    ...restOptions,
   }
 
   // Thêm token nếu có trong localStorage - hỗ trợ nhiều tên khóa token khác nhau
-  const tokenKeys = ['accessToken', 'access_token', 'token', 'jwt', 'idToken']
-  let token = null
-  let tokenKey = null
-  for (const k of tokenKeys) {
-    const v = localStorage.getItem(k)
-    if (v) {
-      token = v
-      tokenKey = k
-      break
+  if (!skipAuth) {
+    const tokenKeys = ['accessToken', 'access_token', 'token', 'jwt', 'idToken']
+    let token = null
+    let tokenKey = null
+    for (const k of tokenKeys) {
+      const v = localStorage.getItem(k)
+      if (v) {
+        token = v
+        tokenKey = k
+        break
+      }
     }
-  }
-  if (token) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`
+    }
+    
+    // Debug: which key provided the token
+    try {
+      /* eslint-disable no-console */
+      console.log('🔐 apiRequest - token present:', !!token, 'keyUsed:', tokenKey)
+      console.log('🔐 apiRequest - outgoing Authorization header:', config.headers['Authorization'])
+      /* eslint-enable no-console */
+    } catch (e) {}
+  } else {
+    // Đảm bảo không gửi Authorization khi skipAuth = true
+    delete config.headers['Authorization']
 
-  // Debug: which key provided the token
-  try {
-    /* eslint-disable no-console */
-    console.log('🔐 apiRequest - token present:', !!token, 'keyUsed:', tokenKey)
-    console.log('🔐 apiRequest - outgoing Authorization header:', config.headers['Authorization'])
-    /* eslint-enable no-console */
-  } catch (e) {}
+    try {
+      /* eslint-disable no-console */
+      console.log('🔐 apiRequest - skipAuth enabled, không gửi Authorization header')
+      /* eslint-enable no-console */
+    } catch (e) {}
+  }
 
   try {
     const response = await fetch(url, config)
@@ -95,6 +108,7 @@ export default {
   get: (endpoint, options) => apiRequest(endpoint, { ...options, method: 'GET' }),
   post: (endpoint, data, options) => apiRequest(endpoint, { ...options, method: 'POST', body: JSON.stringify(data) }),
   put: (endpoint, data, options) => apiRequest(endpoint, { ...options, method: 'PUT', body: JSON.stringify(data) }),
+  patch: (endpoint, data, options) => apiRequest(endpoint, { ...options, method: 'PATCH', body: JSON.stringify(data) }),
   delete: (endpoint, options) => apiRequest(endpoint, { ...options, method: 'DELETE' }),
 }
 

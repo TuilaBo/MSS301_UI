@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import AuthStatus, { isAuthenticated, getUserInfo } from './AuthStatus'
+import AuthStatus from './AuthStatus'
 import { authService } from '../service/authService'
 
 function Navbar() {
@@ -103,6 +103,13 @@ function Navbar() {
     navigate('/')
   }
 
+  const scrollToSection = (id) => {
+    const element = document.getElementById(id)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
   const executeNavAction = (action) => {
     if (typeof action === 'function') {
       action()
@@ -110,29 +117,28 @@ function Navbar() {
     setIsMobileMenuOpen(false)
   }
 
-  // Dynamic membership menu item based on user role
-  const getMembershipNavItem = () => {
-    if (isStudentRole) {
-      return {
+  const isAdminRole = hasRole('ADMIN')
+  const membershipNavItem = isStudentRole
+    ? {
         label: '👤 Membership của tôi',
         href: '/my-memberships',
         action: () => navigate('/my-memberships'),
-        isStudent: true
+        isStudent: true,
       }
-    }
-    return {
-      label: 'Membership',
-      href: '/membership',
-      action: () => navigate('/membership'),
-      isStudent: false
-    }
-  }
+    : {
+        label: 'Membership',
+        href: '/membership',
+        action: () => navigate('/membership'),
+        isStudent: false,
+      }
 
   const navItems = [
     { label: 'Trang chủ', href: '/', action: () => navigate('/') },
     { label: isStudentRole ? 'Bài học' : 'Giáo án', href: '/lessons', action: () => navigate('/lessons') },
     { label: 'Tài liệu', href: '/documents', action: () => navigate('/documents') },
-    getMembershipNavItem(),
+    { label: 'Bài tập', href: '#features', action: () => scrollToSection('features') },
+    membershipNavItem,
+    ...(isAdminRole ? [{ label: 'Quản trị', href: '/admin', action: () => navigate('/admin') }] : []),
   ]
 
   return (

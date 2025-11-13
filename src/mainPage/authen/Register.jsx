@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { authService } from '../../service/authService'
 
 function Register({ onNavigate }) {
@@ -435,17 +436,13 @@ function Register({ onNavigate }) {
 
           {/* Footer */}
           <div className="mt-6 text-center text-sm text-gray-500">
-            <p>Đã có tài khoản? 
-              <a 
-                href="#login" 
-                onClick={(e) => {
-                  e.preventDefault()
-                  if (onNavigate) onNavigate('login')
-                }}
+            <p>Đã có tài khoản?
+              <Link
+                to="/login"
                 className="text-amber-600 hover:text-amber-700 font-medium ml-1"
               >
                 Đăng nhập ngay
-              </a>
+              </Link>
             </p>
           </div>
         </div>

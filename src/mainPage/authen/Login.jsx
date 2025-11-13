@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { authService } from '../../service/authService'
 
 function Login() {
@@ -10,6 +10,16 @@ function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isForgotOpen, setIsForgotOpen] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotStatus, setForgotStatus] = useState('')
+  const [forgotError, setForgotError] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [isResetStage, setIsResetStage] = useState(false)
+  const [resetTokenInput, setResetTokenInput] = useState('')
+  const [resetPasswordInput, setResetPasswordInput] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetStatus, setResetStatus] = useState('')
 
   // Xử lý error từ OAuth callback
   useEffect(() => {
@@ -23,13 +33,63 @@ function Login() {
     }
   }, [searchParams])
 
+  const openForgotModal = () => {
+    setIsForgotOpen(true)
+    setForgotEmail('')
+    setForgotStatus('')
+    setForgotError('')
+    setIsResetStage(false)
+    setResetTokenInput('')
+    setResetPasswordInput('')
+    setResetStatus('')
+  }
+
+  const closeForgotModal = () => {
+    if (resetLoading || forgotLoading) return
+    setIsForgotOpen(false)
+  }
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault()
+    setForgotError('')
+    setForgotStatus('')
+    setForgotLoading(true)
+    try {
+      const response = await authService.forgotPassword(forgotEmail.trim())
+      setForgotStatus(response?.message || 'Nếu tài khoản tồn tại, hệ thống đã gửi token đặt lại mật khẩu.')
+      setIsResetStage(true)
+    } catch (err) {
+      setForgotError(err.message || 'Không thể gửi yêu cầu quên mật khẩu. Vui lòng thử lại.')
+    } finally {
+      setForgotLoading(false)
+    }
+  }
+
+  const handleResetSubmit = async (e) => {
+    e.preventDefault()
+    setForgotError('')
+    setResetStatus('')
+    setResetLoading(true)
+    try {
+      const response = await authService.resetPassword(resetTokenInput.trim(), resetPasswordInput)
+      setResetStatus(response?.message || 'Đặt lại mật khẩu thành công.')
+      setTimeout(() => {
+        setIsForgotOpen(false)
+      }, 1500)
+    } catch (err) {
+      setForgotError(err.message || 'Không thể đặt lại mật khẩu. Vui lòng kiểm tra lại token và thử lại.')
+    } finally {
+      setResetLoading(false)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
     try {
-      const response = await authService.login(username, password)
+      await authService.login(username, password)
       
       // Lưu userId vào localStorage (nếu backend không trả về, dùng giá trị mock)
       if (!localStorage.getItem('userId')) {
@@ -37,8 +97,26 @@ function Login() {
         localStorage.setItem('userId', '1')
       }
       
-      // Chuyển đến trang chủ sau khi đăng nhập thành công
-      navigate('/home')
+      let roleName = localStorage.getItem('role')
+
+      try {
+        const profile = await authService.getCurrentUser()
+        if (profile?.role) {
+          roleName = typeof profile.role === 'object' ? profile.role.roleName : profile.role
+        }
+      } catch (profileErr) {
+        console.error('Không thể lấy thông tin người dùng sau khi đăng nhập:', profileErr)
+        authService.logout()
+        throw profileErr
+      }
+
+      window.dispatchEvent(new Event('storage'))
+
+      if (roleName === 'ADMIN') {
+        navigate('/admin')
+      } else {
+        navigate('/home')
+      }
     } catch (err) {
       let errorMessage = 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'
       
@@ -165,12 +243,13 @@ function Login() {
                 />
                 <span className="ml-2 text-gray-600">Ghi nhớ đăng nhập</span>
               </label>
-              <a
-                href="#"
+              <button
+                type="button"
+                onClick={openForgotModal}
                 className="text-amber-600 hover:text-amber-700 font-medium text-sm"
               >
                 Quên mật khẩu?
-              </a>
+              </button>
             </div>
 
             {/* Error Message */}
@@ -228,17 +307,13 @@ function Login() {
 
           {/* Footer */}
           <div className="mt-6 text-center text-sm text-gray-500">
-            <p>Chưa có tài khoản? 
-              <a 
-                href="#register" 
-                onClick={(e) => {
-                  e.preventDefault()
-                  navigate('/register')
-                }}
+            <p>Chưa có tài khoản?
+              <Link
+                to="/register"
                 className="text-amber-600 hover:text-amber-700 font-medium ml-1"
               >
                 Đăng ký ngay
-              </a>
+              </Link>
             </p>
           </div>
         </div>
@@ -255,6 +330,102 @@ function Login() {
           </div>
         </div>
       </div>
+
+      {isForgotOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-amber-100 p-6 relative">
+            <button
+              type="button"
+              onClick={closeForgotModal}
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl"
+            >
+              ×
+            </button>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Quên mật khẩu</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Nhập email đã đăng ký để nhận mã đặt lại mật khẩu. Sau khi nhận được token qua email, điền vào biểu mẫu bên dưới.
+            </p>
+
+            {!isResetStage && (
+              <form onSubmit={handleForgotSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
+                    placeholder="Nhập email đã đăng ký"
+                    required
+                  />
+                </div>
+                {forgotError && (
+                  <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm">
+                    {forgotError}
+                  </div>
+                )}
+                {forgotStatus && (
+                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-lg text-sm">
+                    {forgotStatus}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={forgotLoading}
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-2.5 rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {forgotLoading ? 'Đang gửi...' : 'Gửi yêu cầu'}
+                </button>
+              </form>
+            )}
+
+            {isResetStage && (
+              <form onSubmit={handleResetSubmit} className="space-y-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Token đặt lại</label>
+                  <input
+                    type="text"
+                    value={resetTokenInput}
+                    onChange={(e) => setResetTokenInput(e.target.value)}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
+                    placeholder="Nhập token nhận được qua email"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mật khẩu mới</label>
+                  <input
+                    type="password"
+                    value={resetPasswordInput}
+                    onChange={(e) => setResetPasswordInput(e.target.value)}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
+                    placeholder="Nhập mật khẩu mới"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                {forgotError && (
+                  <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm">
+                    {forgotError}
+                  </div>
+                )}
+                {resetStatus && (
+                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-lg text-sm">
+                    {resetStatus}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-2.5 rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {resetLoading ? 'Đang đặt lại...' : 'Đặt lại mật khẩu'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
