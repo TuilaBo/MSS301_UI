@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { authService } from '../../service/authService'
 
@@ -142,10 +142,13 @@ function OAuthCallback() {
         // Trigger storage event để Navbar cập nhật authentication status
         window.dispatchEvent(new Event('storage'))
         
-        // Redirect về trang chủ sau 1 giây
+        const targetRole = localStorage.getItem('role')
+        const nextPath = targetRole === 'ADMIN' ? '/admin' : '/home'
+
+        // Redirect về trang phù hợp sau 1 giây
         setTimeout(() => {
-          console.log('Redirecting to /home')
-          navigate('/home')
+          console.log('Redirecting to', nextPath)
+          navigate(nextPath)
         }, 1000)
       } catch (err) {
         console.error('OAuth callback error:', err)

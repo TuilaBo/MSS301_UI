@@ -79,12 +79,17 @@ function Navbar() {
     setIsMobileMenuOpen(false)
   }
 
+  const roleName = userInfo?.role?.roleName || localStorage.getItem('role')
+
   const navItems = [
     { label: 'Trang chủ', href: '/', action: () => navigate('/') },
     { label: 'Giáo án', href: '/lessons', action: () => navigate('/lessons') },
     { label: 'Tài liệu', href: '/documents', action: () => navigate('/documents') },
     { label: 'Bài tập', href: '#features', action: () => scrollToSection('features') },
     { label: 'Membership', href: '/membership', action: () => navigate('/membership') },
+    ...(roleName === 'ADMIN'
+      ? [{ label: 'Quản trị', href: '/admin', action: () => navigate('/admin') }]
+      : []),
   ]
 
   return (

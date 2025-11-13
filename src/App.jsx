@@ -20,6 +20,9 @@ import LessonTestList from './mainPage/test/LessonTestList'
 import TeacherDashboard from './mainPage/teacher/TeacherDashboard'
 import TeacherTestForm from './mainPage/teacher/TeacherTestForm'
 import TeacherTestUpdate from './mainPage/teacher/TeacherTestUpdate'
+import AdminAccounts from './mainPage/admin/AdminAccounts'
+import RequireAuth from './components/guards/RequireAuth'
+import RequireRole from './components/guards/RequireRole'
 
 // Component để xử lý hash-based OAuth callback
 function HashOAuthHandler() {
@@ -72,6 +75,16 @@ function AppRoutes() {
         <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
         <Route path="/teacher-test-form" element={<TeacherTestForm />} />
         <Route path="/teacher-test-update" element={<TeacherTestUpdate />} />
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth>
+              <RequireRole role="ADMIN">
+                <AdminAccounts />
+              </RequireRole>
+            </RequireAuth>
+          }
+        />
         <Route path="*" element={<HomePage />} />
       </Routes>
     </>
